@@ -1,0 +1,112 @@
+{
+  "obsession": [
+    "{name} has become obsessed with this particular piece of {object}.",
+    "{name} refuses to leave the {object}. It's been there for days.",
+    "{name} has claimed the {object} and returns to it constantly."
+  ],
+  "friend": [
+    "{name} and {other} have become inseparable.",
+    "{name} follows {other} around everywhere now.",
+    "{name} and {other} spend all their time grazing side by side."
+  ],
+  "quirk": [
+    "You notice something about {name}: {quirk}",
+    "{name} has developed a habit. {quirk}",
+    "New observation on {name}: {quirk}"
+  ],
+  "nickname": [
+    "You've started calling {name} \"{nick}\".",
+    "Everyone just calls {name} \"{nick}\" now.",
+    "{name} has earned a nickname: \"{nick}\"."
+  ],
+  "molt": [
+    "{name} molted overnight and is hiding until the new shell hardens.",
+    "A perfect molt from {name}. The empty shell sits on the substrate like a ghost.",
+    "{name} shed its skin and is looking a little bigger."
+  ],
+  "moltFail": [
+    "{name} got stuck in its molt. It didn't make it.",
+    "A failed molt. {name} is gone. Check your GH and keep the water steady."
+  ],
+  "berried": [
+    "{name} is berried! A clutch of {n} eggs tucked under her tail.",
+    "After the molt, {name} was chased around the tank by every male. She's carrying {n} eggs now.",
+    "{name} is fanning a fresh clutch of {n} eggs."
+  ],
+  "hatch": [
+    "{name}'s eggs hatched. {n} shrimplets are hiding in the moss.",
+    "Tiny specks are moving on the glass. {name}'s clutch hatched: {n} survived.",
+    "{n} new shrimplets from {name}. They're almost invisible."
+  ],
+  "hatchNone": [
+    "{name}'s eggs hatched, but none of the shrimplets survived the first day. Not enough biofilm to eat.",
+    "{name} dropped her eggs. The water wasn't steady enough."
+  ],
+  "death": [
+    "{name} was found lying on its side. {cause}",
+    "{name} has died. {cause}",
+    "Lost {name} today. {cause}"
+  ],
+  "oldAge": [
+    "{name} passed away peacefully after {n} days. A long life for a shrimp.",
+    "{name} was one of the old guard. {n} days in the tank. The others gathered around for a while."
+  ],
+  "newMorph": [
+    "A new colour morph has appeared: {morph}! You've never seen one of these in this tank before.",
+    "Something unexpected hatched. One of the shrimplets is a {morph}."
+  ],
+  "mutation": [
+    "One of {name}'s offspring carries a mutation nobody in the tank had before.",
+    "A spontaneous mutation showed up in {name}'s clutch. It may not show until later generations."
+  ],
+  "stageUp": [
+    "{name} is all grown up.",
+    "{name} has reached adult size and its colour is filling in."
+  ],
+  "snailArrive": [
+    "A tiny bladder snail hitchhiked in on the {object}. There is never just one.",
+    "Where did that snail come from? It must have come in with the {object}."
+  ],
+  "snailBreed": [
+    "More snails. They're breeding on the leftover food.",
+    "A cluster of jelly snail eggs appeared on the glass."
+  ],
+  "snailBoom": [
+    "The snail population is out of control. Feed less.",
+    "You count the snails. You stop counting the snails."
+  ],
+  "algaeBloom": [
+    "The glass is turning green. Too much light, too many nutrients.",
+    "Hair algae is creeping over the driftwood. The shrimp seem to like picking at it, at least."
+  ],
+  "overgrown": [
+    "The water lettuce has taken over the surface. The plants below are getting shaded.",
+    "The moss has grown into a giant tangle. The shrimplets love it."
+  ],
+  "waterWarn": [
+    "The water has a faint sharp smell. Ammonia is rising.",
+    "Nitrite is showing on the test. The shrimp are hiding more than usual.",
+    "Nitrates are creeping up. Time for a water change."
+  ],
+  "moltWave": [
+    "The water change triggered a molting wave. Empty shells everywhere.",
+    "Fresh water always does it: half the tank molted overnight."
+  ],
+  "idle": [
+    "{name} spent the afternoon cleaning its antennae on the {object}.",
+    "{name} did a slow lap of the tank and went back to the {object}.",
+    "{name} and {other} bumped into each other and both pretended it didn't happen.",
+    "{name} sat perfectly still on the {object} for hours. Thinking, probably.",
+    "{name} tried to steal a pellet from {other} and got flicked away.",
+    "{name} is picking at the biofilm on the {object} with great focus.",
+    "{name} found a spot on the {object} where the light hits just right.",
+    "{name} swam a loop, stopped, and seemed surprised to be where it was.",
+    "The snail and {name} are sharing the {object}. Neither seems to mind.",
+    "{name} has been fanning its little legs at nothing in particular.",
+    "{name} climbed to the top of the {object} and surveyed its domain.",
+    "{name} ate a chunk of the old molt. Waste not."
+  ],
+  "away": [
+    "While you were away: {days} days passed, {births} shrimplets hatched, {deaths} lost."
+  ]
+}

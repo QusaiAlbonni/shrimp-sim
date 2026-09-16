@@ -1,0 +1,21 @@
+{
+  "quirks": [
+    {"id":"hermit","label":"Hermit","desc":"Rarely leaves cover.","innate":true,"weight":3,"nick":["Hermit","Shadow","Ghost"]},
+    {"id":"zoomer","label":"Zoomer","desc":"Randomly rockets across the tank for no reason.","innate":true,"weight":3,"nick":["Zoomer","Rocket","Zippy"]},
+    {"id":"glutton","label":"Glutton","desc":"First to the food, last to leave it.","innate":true,"weight":3,"nick":["Chonk","Hoover","Snack"]},
+    {"id":"picky","label":"Picky eater","desc":"Turns its nose up at pellets. Only veggies and wafers will do.","innate":true,"weight":2,"nick":["Fussy","Gourmet"]},
+    {"id":"climber","label":"Climber","desc":"Likes to sit on the very tip of the tallest plant.","innate":true,"weight":3,"nick":["Summit","Sky","Perch"]},
+    {"id":"filter_hugger","label":"Filter hugger","desc":"Spends hours picking at the sponge filter.","innate":true,"weight":3,"nick":["Sponge","Filter"]},
+    {"id":"nocturnal","label":"Night owl","desc":"Hides by day and comes alive when the lights go out.","innate":true,"weight":2,"nick":["Nox","Luna","Owl"]},
+    {"id":"wallflower","label":"Wallflower","desc":"Parks itself against the front glass and stares at you.","innate":true,"weight":2,"nick":["Window","Staredown"]},
+    {"id":"dancer","label":"Dancer","desc":"Swims in wide showy loops whenever there's an audience.","innate":true,"weight":2,"nick":["Twirl","Disco"]},
+    {"id":"bully","label":"Bully","desc":"Shoves others away from the good food.","innate":true,"weight":1,"nick":["Boss","Tank"]},
+    {"id":"grumpy","label":"Grumpy","desc":"Gets stressed when the crowd gets too close.","innate":true,"weight":2,"nick":["Grump","Crab"]},
+    {"id":"snail_rider","label":"Snail rider","desc":"Has been seen hitching rides on the snails.","innate":false,"weight":2,"nick":["Jockey","Rider"]},
+    {"id":"obsessed","label":"Obsessed","desc":"Has become obsessed with one particular object.","innate":false,"weight":0,"nick":["Mossy","Rocky","Woody","Loyal"]},
+    {"id":"molt_spot","label":"Creature of habit","desc":"Always molts in the exact same spot.","innate":false,"weight":2,"nick":["Habit","Ritual"]},
+    {"id":"early_bird","label":"Early bird","desc":"Somehow always knows when food is coming.","innate":false,"weight":2,"nick":["Radar","Early"]},
+    {"id":"bubble_chaser","label":"Bubble chaser","desc":"Keeps trying to catch bubbles from the filter.","innate":true,"weight":2,"nick":["Bubbles","Fizz"]},
+    {"id":"brave","label":"Brave","desc":"Grazes right out in the open, even under bright light.","innate":false,"weight":2,"nick":["Bold","Hero"]}
+  ]
+}

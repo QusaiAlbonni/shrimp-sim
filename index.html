@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Shrimp Tank</title>
+  <meta name="description" content="A tiny aquarium simulator. Shrimp with personalities, water chemistry, plants, snails and rare colour morphs.">
+  <meta name="theme-color" content="#071b25">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦐</text></svg>">
+  <link rel="manifest" href="./app.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="loader" class="loader" role="status" aria-live="polite">
+    <div class="loader-card">
+      <canvas id="loaderCanvas" width="220" height="90" aria-hidden="true"></canvas>
+      <h1>Shrimp Tank</h1>
+      <div class="bar-track"><div id="loaderBar" class="bar-fill"></div></div>
+      <div id="loaderStatus" class="status">Preparing…</div>
+      <div id="loaderDetail" class="detail"></div>
+      <p id="loaderFact" class="fact"></p>
+      <button id="loaderEnter" class="enter hidden">Enter the tank</button>
+      <div id="loaderError" class="error hidden"></div>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand">🦐 Shrimp Tank</div>
+      <div class="clock" id="clock">Day 1</div>
+      <div class="timectl" role="group" aria-label="Game speed">
+        <button data-speed="0" title="Pause (space)">⏸</button>
+        <button data-speed="1" title="1× (1)">1×</button>
+        <button data-speed="3" title="3× (2)">3×</button>
+        <button data-speed="10" title="10× (3)">10×</button>
+      </div>
+      <div class="money" id="money">$40</div>
+      <div id="streamStatus" class="stream"></div>
+      <div class="menu">
+        <button id="btnSound" title="Ambient sound">🔇</button>
+        <button id="btnSave">Save</button>
+        <button id="btnMore" title="More">⋯</button>
+        <div id="moreMenu" class="more hidden">
+          <button id="btnExport">Export save…</button>
+          <button id="btnImport">Import save…</button>
+          <input id="importFile" type="file" accept="application/json" hidden>
+          <button id="btnReset" class="danger">New tank</button>
+          <small>Autosaves every 20s. Time keeps passing while you're away (up to 3 days).</small>
+        </div>
+      </div>
+    </header>
+    <main class="main">
+      <div class="tank-wrap">
+        <canvas id="tank" width="960" height="540" aria-label="Aquarium"></canvas>
+        <div id="toasts" class="toasts"></div>
+      </div>
+      <aside class="panel">
+        <nav class="tabs">
+          <button data-tab="tank" class="active">Tank</button>
+          <button data-tab="shrimp">Shrimp</button>
+          <button data-tab="shop">Shop</button>
+          <button data-tab="log">Log</button>
+          <button data-tab="dex">Dex</button>
+          <button data-tab="guide">Guide</button>
+        </nav>
+        <section id="tab-tank" class="tab active"></section>
+        <section id="tab-shrimp" class="tab"></section>
+        <section id="tab-shop" class="tab"></section>
+        <section id="tab-log" class="tab"></section>
+        <section id="tab-dex" class="tab"></section>
+        <section id="tab-guide" class="tab"></section>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

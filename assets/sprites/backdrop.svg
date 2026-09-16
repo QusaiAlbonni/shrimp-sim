@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d3a4a" stop-opacity="0"/><stop offset="1" stop-color="#062a36" stop-opacity="0.9"/></linearGradient></defs>
+  <rect width="960" height="320" fill="url(#bg)"/>
+  <g fill="#0a4a4a" opacity="0.55">
+    <path d="M40 320 C 50 240, 30 200, 60 120 C 70 200, 90 240, 80 320 Z"/><path d="M120 320 C 110 260, 140 220, 130 150 C 160 220, 150 270, 160 320 Z"/>
+    <path d="M300 320 C 290 250, 320 200, 310 90 C 340 200, 340 260, 340 320 Z"/><path d="M360 320 C 370 270, 350 230, 380 170 C 400 240, 390 280, 400 320 Z"/>
+    <path d="M620 320 C 610 250, 640 210, 630 110 C 660 210, 660 260, 660 320 Z"/><path d="M700 320 C 690 280, 720 240, 710 200 C 740 250, 730 290, 740 320 Z"/>
+    <path d="M860 320 C 850 260, 880 220, 870 140 C 900 220, 900 270, 910 320 Z"/><path d="M920 320 C 910 280, 940 250, 930 190 C 950 250, 950 290, 955 320 Z"/>
+  </g>
+  <g fill="#0c5a52" opacity="0.4">
+    <ellipse cx="220" cy="300" rx="70" ry="30"/><ellipse cx="520" cy="305" rx="90" ry="28"/><ellipse cx="800" cy="300" rx="60" ry="26"/>
+  </g>
+</svg>

@@ -1,0 +1,124 @@
+{
+  "version": "mu4nk72u",
+  "assets": [
+    {
+      "id": "backdrop",
+      "url": "sprites/backdrop.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 1203
+    },
+    {
+      "id": "bamboo",
+      "url": "sprites/bamboo.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 918
+    },
+    {
+      "id": "bladder",
+      "url": "sprites/bladder.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 443
+    },
+    {
+      "id": "cave",
+      "url": "sprites/cave.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 690
+    },
+    {
+      "id": "cholla",
+      "url": "sprites/cholla.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 838
+    },
+    {
+      "id": "driftwood",
+      "url": "sprites/driftwood.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 1987
+    },
+    {
+      "id": "filter",
+      "url": "sprites/filter.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 876
+    },
+    {
+      "id": "hut",
+      "url": "sprites/hut.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 788
+    },
+    {
+      "id": "leaf",
+      "url": "sprites/leaf.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 557
+    },
+    {
+      "id": "mossball",
+      "url": "sprites/mossball.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 568
+    },
+    {
+      "id": "nerite",
+      "url": "sprites/nerite.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 603
+    },
+    {
+      "id": "ramshorn",
+      "url": "sprites/ramshorn.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 390
+    },
+    {
+      "id": "rock",
+      "url": "sprites/rock.svg",
+      "type": "svg",
+      "tier": "core",
+      "bytes": 1569
+    },
+    {
+      "id": "tube",
+      "url": "sprites/tube.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 614
+    },
+    {
+      "id": "events",
+      "url": "data/events.json",
+      "type": "json",
+      "tier": "core",
+      "bytes": 4894
+    },
+    {
+      "id": "names",
+      "url": "data/names.json",
+      "type": "json",
+      "tier": "core",
+      "bytes": 1388
+    },
+    {
+      "id": "quirks",
+      "url": "data/quirks.json",
+      "type": "json",
+      "tier": "core",
+      "bytes": 2604
+    }
+  ]
+}
