@@ -8,7 +8,7 @@ export const LOCI = {
   C:  { alleles: ['w', 'n', 'g', 'y', 'o', 'b', 'r', 'c', 'k'], mut: 0.010 }, // pigment colour
   I1: { alleles: [0, 1, 2, 3], mut: 0.020 }, // intensity (additive)
   I2: { alleles: [0, 1, 2, 3], mut: 0.020 }, // intensity (additive)
-  P:  { alleles: ['S', 'r', 't'], mut: 0.008 }, // S solid (dom), rr/rt rili, tt tiger
+  P:  { alleles: ['S', 'r', 't', 'b'], mut: 0.008 }, // S solid (dom), rr/rt rili, tt tiger, bb crystal banding
   E:  { alleles: ['N', 'e'], mut: 0.004 }, // ee = orange eyes
   H:  { alleles: ['N', 'h'], mut: 0.003 }, // hh = metallic sheen
   G:  { alleles: ['N', 'g'], mut: 0.0015 }, // gg = galaxy pinto spotting (legendary)
@@ -75,7 +75,8 @@ export function phenotype(genome, sex) {
   const p = genome.P;
   const solid = p.includes('S');
   const tiger = !solid && p[0] === 't' && p[1] === 't';
-  const rili = !solid && !tiger;
+  const crystal = !solid && p[0] === 'b' && p[1] === 'b';
+  const rili = !solid && !tiger && !crystal;
   const orangeEye = genome.E[0] === 'e' && genome.E[1] === 'e';
   const sheen = genome.H[0] === 'h' && genome.H[1] === 'h';
   const galaxy = genome.G[0] === 'g' && genome.G[1] === 'g';
@@ -83,19 +84,20 @@ export function phenotype(genome, sex) {
   const colour = COLORS[top];
   let name;
   if (galaxy) name = `${colour.name} Galaxy Pinto`;
+  else if (crystal) name = `Crystal ${colour.name}${tier >= 4 ? ' SSS' : tier >= 2 ? ' S+' : ''}`;
   else if (tiger) name = `${colour.name} Tiger`;
   else if (rili) name = top === 'k' ? 'Carbon Rili' : `${colour.name} Rili`;
   else name = GRADE_NAMES[top][tier];
   if (sheen) name = `Metallic ${name}`;
   if (orangeEye) name = `Orange Eye ${name}`;
 
-  const rarity = tier + colour.rarity + (rili ? 2 : 0) + (tiger ? 3 : 0) + (orangeEye ? 4 : 0) + (sheen ? 4 : 0) + (galaxy ? 8 : 0);
+  const rarity = tier + colour.rarity + (rili ? 2 : 0) + (tiger ? 3 : 0) + (crystal ? 3 : 0) + (orangeEye ? 4 : 0) + (sheen ? 4 : 0) + (galaxy ? 8 : 0);
   const price = Math.round(2 + Math.pow(rarity, 1.6) * 1.4);
   const stars = rarity <= 1 ? 1 : rarity <= 3 ? 2 : rarity <= 6 ? 3 : rarity <= 10 ? 4 : 5;
   const opacity = top === 'w' ? 0.35 + tier * 0.08 : 0.42 + tier * 0.145;
 
   return {
-    name, colour: top, rgb: colour.rgb, tier, grade, solid, rili, tiger, orangeEye, sheen, galaxy,
+    name, colour: top, rgb: colour.rgb, tier, grade, solid, rili, tiger, crystal, orangeEye, sheen, galaxy,
     rarity, stars, price, opacity,
     hidden: hiddenAlleles(genome),
   };
@@ -109,6 +111,7 @@ function hiddenAlleles(genome) {
   if (c1 !== c2) { const low = COLORS[c1].rank < COLORS[c2].rank ? c1 : c2; out.push(COLORS[low].name.toLowerCase()); }
   if (genome.P.includes('S') && genome.P.includes('r')) out.push('rili');
   if (genome.P.includes('S') && genome.P.includes('t')) out.push('tiger');
+  if (genome.P.includes('S') && genome.P.includes('b')) out.push('crystal banding');
   if (genome.E.includes('e') && genome.E.includes('N')) out.push('orange eye');
   if (genome.H.includes('h') && genome.H.includes('N')) out.push('sheen');
   if (genome.G.includes('g') && genome.G.includes('N')) out.push('galaxy');
@@ -131,6 +134,11 @@ export function presetGenome(rng, preset = 'cherry') {
     case 'black': g.C = ['k', 'k']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
     case 'rili': g.C = ['r', 'r']; g.P = ['r', 'r']; g.I1 = hi(); break;
     case 'wild': g.C = ['w', 'w']; g.I1 = pair(rng, [0, 1]); g.I2 = pair(rng, [0, 1]); break;
+    case 'snow': g.C = ['n', 'n']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
+    case 'green': g.C = ['g', 'g']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
+    case 'orange': g.C = ['o', 'o']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
+    case 'crystalRed': g.C = ['r', 'r']; g.P = ['b', 'b']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
+    case 'crystalBlack': g.C = ['k', 'k']; g.P = ['b', 'b']; g.I1 = hi(); g.I2 = [rng.int(1, 3), rng.int(1, 3)]; break;
     case 'mystery': {
       g.C = [rng.pick(LOCI.C.alleles), rng.pick(LOCI.C.alleles)];
       g.I1 = pair(rng, LOCI.I1.alleles); g.I2 = pair(rng, LOCI.I2.alleles);

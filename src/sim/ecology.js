@@ -25,6 +25,26 @@ export const DECOR = {
   hut:       { name: 'Coconut hut', sprite: 'hut', w: 120, h: 104, hide: 4, biofilm: 0.4, price: 10, obsessable: true },
   bamboo:    { name: 'Bamboo', sprite: 'bamboo', w: 70, h: 210, hide: 1, biofilm: 0.3, price: 9, obsessable: true },
   mossball:  { name: 'Moss ball', sprite: 'mossball', w: 60, h: 60, hide: 2, biofilm: 0.8, price: 7, obsessable: true, mossy: true },
+  // novelty decorations
+  boat:      { name: 'Sunken boat', sprite: 'boat', w: 200, h: 110, hide: 4, biofilm: 0.3, price: 25, obsessable: true, novelty: true },
+  chest:     { name: 'Treasure chest', sprite: 'chest', w: 90, h: 70, hide: 2, biofilm: 0.2, price: 18, obsessable: true, novelty: true, bubbles: true },
+  castle:    { name: 'Castle', sprite: 'castle', w: 130, h: 160, hide: 5, biofilm: 0.3, price: 30, obsessable: true, novelty: true },
+  sign:      { name: 'No Fishing sign', sprite: 'sign', w: 50, h: 90, hide: 0, biofilm: 0.1, price: 6, obsessable: true, novelty: true },
+  diver:     { name: 'Diver helmet', sprite: 'diver', w: 70, h: 80, hide: 2, biofilm: 0.2, price: 14, obsessable: true, novelty: true },
+};
+
+export const TANK_MODELS = {
+  standard: { name: 'Standard 40 L', volume: 1, price: 0, hideBonus: 0, rim: 'black', desc: 'The starter tank.' },
+  rimless:  { name: 'Rimless 40 L', volume: 1, price: 35, hideBonus: 0, rim: 'none', desc: 'Same water, cleaner look.' },
+  bowfront: { name: 'Bowfront 60 L', volume: 1.5, price: 60, hideBonus: 3, rim: 'silver', desc: 'More water dilutes waste; room for 12 more shrimp.' },
+  long:     { name: 'Long 80 L', volume: 2, price: 90, hideBonus: 6, rim: 'black', desc: 'Twice the water. Parameters drift half as fast.' },
+};
+export const BACKGROUNDS = {
+  jungle:   { name: 'Jungle', price: 0, sprite: 'backdrop', top: '#1a6f86', bottom: '#0a3a4a', nightTop: '#0d3b4c', nightBottom: '#051c26' },
+  black:    { name: 'Black', price: 8, top: '#1b2a30', bottom: '#050809', nightTop: '#0c1418', nightBottom: '#020404' },
+  blue:     { name: 'Deep blue', price: 8, top: '#2a6fb8', bottom: '#0a2a5a', nightTop: '#123a68', nightBottom: '#04142e' },
+  sunset:   { name: 'Sunset', price: 10, top: '#c86a4a', bottom: '#3a2a5a', nightTop: '#5a3a3a', nightBottom: '#1a1430' },
+  rockwall: { name: 'Rock wall', price: 12, sprite: 'rockwall', top: '#4a5a60', bottom: '#1e262a', nightTop: '#2a3438', nightBottom: '#0e1214' },
 };
 
 export const PLANTS = {
@@ -33,7 +53,41 @@ export const PLANTS = {
   javafern: { name: 'Java fern', rate: 0.02, max: 1.3, hide: 2, biofilm: 0.3, uptake: 0.4, h: 120, w: 70, price: 9 },
   stem:     { name: 'Rotala', rate: 0.09, max: 1.5, hide: 1, biofilm: 0.2, uptake: 0.8, h: 200, w: 50, price: 6 },
   floating: { name: 'Water lettuce', rate: 0.1, max: 2.0, hide: 1, biofilm: 0.3, uptake: 1.0, floating: true, h: 40, w: 90, price: 5 },
+  crypt:    { name: 'Cryptocoryne', rate: 0.02, max: 1.3, hide: 2, biofilm: 0.3, uptake: 0.4, h: 90, w: 80, price: 9 },
+  buce:     { name: 'Bucephalandra', rate: 0.008, max: 1.0, hide: 2, biofilm: 0.5, uptake: 0.2, h: 40, w: 60, price: 14 },
+  hairgrass:{ name: 'Dwarf hairgrass', rate: 0.04, max: 1.4, hide: 2, biofilm: 0.4, uptake: 0.5, h: 30, w: 120, price: 7, mossy: true },
 };
+
+// ---- algae on the front glass: a grid of cells the player scrubs ----------
+export const ALGAE_COLS = 24, ALGAE_ROWS = 10;
+export function algaeCellAt(x, y) {
+  const cx = Math.floor(((x - TANK.x0) / (TANK.x1 - TANK.x0)) * ALGAE_COLS), cy = Math.floor(((y - TANK.top) / (TANK.floorFront - TANK.top)) * ALGAE_ROWS);
+  if (cx < 0 || cx >= ALGAE_COLS || cy < 0 || cy >= ALGAE_ROWS) return -1;
+  return cy * ALGAE_COLS + cx;
+}
+export function algaeCellCenter(i) {
+  const cx = i % ALGAE_COLS, cy = Math.floor(i / ALGAE_COLS);
+  return { x: TANK.x0 + (cx + 0.5) * (TANK.x1 - TANK.x0) / ALGAE_COLS, y: TANK.top + (cy + 0.5) * (TANK.floorFront - TANK.top) / ALGAE_ROWS };
+}
+const cellNoise = (i) => 0.55 + 0.9 * ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1;
+export function initAlgaeCells(film = 0.08) {
+  const cells = new Array(ALGAE_COLS * ALGAE_ROWS);
+  for (let i = 0; i < cells.length; i++) cells[i] = clamp(film * cellNoise(i), 0, 1);
+  return cells;
+}
+// Scrub a circle of glass; returns how much algae was removed.
+export function scrubAt(world, x, y, radius = 46, strength = 0.6) {
+  const cells = world.algae.cells; let removed = 0;
+  for (let i = 0; i < cells.length; i++) {
+    const c = algaeCellCenter(i);
+    const d = Math.hypot(c.x - x, c.y - y);
+    if (d > radius) continue;
+    const k = strength * (1 - d / radius);
+    const before = cells[i]; cells[i] = Math.max(0, cells[i] - k); removed += before - cells[i];
+  }
+  world.algae.film = cells.reduce((a, b) => a + b, 0) / cells.length;
+  return removed;
+}
 
 export const FOODS = {
   pellet:   { name: 'Shrimp pellet', amount: 1, decayH: 20, ammonia: 0.12, rot: 0.004, price: 3, pack: 10, color: '#8a6a3a' },
@@ -64,7 +118,7 @@ export function buildSpots(world) {
   }
   spots.push({ id: 'floor', kind: 'substrate', x: (TANK.x0 + TANK.x1) / 2, y: TANK.floorFront, w: TANK.x1 - TANK.x0, h: 6, hide: 0, biofilm: 0.3, obsessable: false, floor: true });
   world._spots = spots;
-  world._hideCap = spots.reduce((s, sp) => s + sp.hide, 0);
+  world._hideCap = spots.reduce((s, sp) => s + sp.hide, 0) + (TANK_MODELS[world.tank?.model]?.hideBonus || 0);
   world._mossFactor = Math.min(1, spots.filter((s) => s.mossy).reduce((a, s) => a + (s.plant ? s.h / 60 : 1) * 0.35, 0));
   return spots;
 }
@@ -87,15 +141,16 @@ export function spotTop(spot) {
 export function updateWater(world, dt) {
   const w = world.water;
   const pop = world.shrimp.length;
+  const vol = TANK_MODELS[world.tank?.model]?.volume || 1;
   const room = 22 + 1.6 * Math.sin(((world.hour - 14) / 24) * Math.PI * 2);
-  w.temp += (room - w.temp) * 0.08 * dt;
+  w.temp += (room - w.temp) * (0.08 / Math.sqrt(vol)) * dt;
   if (world.heater.on && w.temp < world.heater.target) w.temp += Math.min(world.heater.target - w.temp, 0.5 * dt);
 
   let waste = 0;
   for (const s of world.shrimp) waste += s.size * 0.0012;
   waste += world.snails.length * 0.0015;
   waste += world._foodRot || 0; world._foodRot = 0;
-  w.nh3 += waste * dt;
+  w.nh3 += (waste / vol) * dt;
 
   const demand = w.nh3 + w.no2;
   w.bacteria = clamp(w.bacteria + (demand > 0.05 ? 0.004 : -0.0008) * dt, 0.05, 1);
@@ -106,7 +161,7 @@ export function updateWater(world, dt) {
   w.no3 = Math.max(0, w.no3 - up);
   w.nh3 = Math.max(0, w.nh3 - up * 0.05);
 
-  w.tds += (0.05 + pop * 0.002) * dt;
+  w.tds += ((0.05 + pop * 0.002) / vol) * dt;
   w.tannin = Math.max(0, w.tannin * (1 - 0.01 * dt));
   const swing = w.kh < 2 ? 0.35 : w.kh < 4 ? 0.12 : 0.05;
   const phTarget = 7.0 + w.kh * 0.07 - w.tannin * 0.4 - w.no3 / 400 + (world.light.on ? swing : -swing) * 0.5;
@@ -136,7 +191,7 @@ export function updatePlants(world, dt) {
     const t = PLANTS[p.type];
     const light = L * (t.floating ? 1 : 1 - shade);
     const nutrient = w.no3 / (w.no3 + 6);
-    const growth = (t.rate / 24) * light * nutrient * (1 - p.size / t.max) * dt;
+    const growth = (t.rate / 24) * light * nutrient * (1 - p.size / t.max) * dt * (world.pace || 1);
     p.size = clamp(p.size + growth, 0.1, t.max);
     if (w.no3 < 1) p.size = Math.max(0.15, p.size - 0.0005 * dt);
     uptake += p.size * t.uptake * 0.07 * (0.3 + light) * dt;
@@ -159,10 +214,21 @@ export function updateAlgae(world, dt) {
   const L = world.light.on ? world.light.intensity / 3 : 0;
   const shade = world._shade || 0;
   const pop = world.shrimp.length;
-  const growth = L * (1 - shade) * 0.008 * (0.4 + w.no3 / 25) + 0.0002;
+  const growth = (L * (1 - shade) * 0.008 * (0.4 + w.no3 / 25) + 0.0002) * (world.pace || 1);
   let graze = pop * 0.00005;
-  for (const s of world.snails) graze += SNAILS[s.type].graze * s.size;
-  a.film = clamp(a.film + (growth - graze * (0.3 + a.film)) * dt, 0, 1);
+  if (!a.cells) a.cells = initAlgaeCells(a.film);
+  const cells = a.cells;
+  // snails on the front glass clean the cells under them; elsewhere they graze other surfaces
+  for (const s of world.snails) {
+    const g = SNAILS[s.type].graze * s.size;
+    if (s.onFront) {
+      const i = algaeCellAt(s.x, s.y - 8);
+      if (i >= 0) { const take = Math.min(cells[i], g * 14 * dt); cells[i] -= take; if (take < g * 4 * dt) s.glassDone = true; }
+    } else graze += g * 0.25;
+  }
+  let sum = 0;
+  for (let i = 0; i < cells.length; i++) { cells[i] = clamp(cells[i] + (growth * cellNoise(i) - graze * (0.3 + cells[i])) * dt, 0, 1); sum += cells[i]; }
+  a.film = sum / cells.length;
   if (a.film > 0.55 && w.no3 > 20 && L > 0) a.hair += 0.0025 * L * dt;
   a.hair = clamp(a.hair - (pop * 0.0004 + world.snails.length * 0.0003 + (a.film < 0.3 ? 0.001 : 0)) * (0.3 + a.hair) * dt, 0, 1);
   const diatomTarget = world.tankAge < 45 ? 0.4 * (1 - world.tankAge / 45) : 0;
@@ -199,7 +265,10 @@ export function updateFood(world, dt) {
   world._foodRot = (world._foodRot || 0) + rot;
   for (let i = world.molts.length - 1; i >= 0; i--) {
     const m = world.molts[i]; m.age += dt;
-    if (m.age > 60 || m.amount <= 0.05) world.molts.splice(i, 1);
+    // shells dissolve slowly and give their minerals back to the water
+    const d = Math.min(m.amount, 0.006 * dt); m.amount -= d;
+    w.gh += d * 0.05; w.kh += d * 0.01; w.tds += d * 1.2;
+    if (m.age > 96 || m.amount <= 0.03) world.molts.splice(i, 1);
   }
 }
 
@@ -210,7 +279,7 @@ export function createSnail(world, type, x, y, z) {
   const s = {
     id: world.nextId++, type, x: x ?? rng.range(TANK.x0 + 30, TANK.x1 - 30), y: y ?? floorY(z0) - 2, z: z0,
     size: type === 'bladder' ? rng.range(0.4, 0.8) : rng.range(0.7, 1), age: 0,
-    personality: rng.pick(SNAIL_PERSONALITIES), target: null, onGlass: false, facing: 1,
+    personality: rng.pick(SNAIL_PERSONALITIES), target: null, onGlass: false, onFront: false, facing: 1,
   };
   world.snails.push(s);
   return s;
@@ -239,7 +308,9 @@ export function updateSnails(world, dt) {
       if (s.target.z != null) s.z += (s.target.z - s.z) * Math.min(1, step / dist);
       s.facing = dx < 0 ? -1 : 1;
     }
-    s.onGlass = s.x < TANK.x0 + 12 || s.x > TANK.x1 - 12;
+    s.onGlass = !s.target.front && (s.x < TANK.x0 + 12 || s.x > TANK.x1 - 12);
+    s.onFront = !!s.target.front;
+    if (s.onFront && s.glassDone && rng.chance(0.4 * dt)) { s.glassDone = false; s.target = pickSnailTarget(s, world); }
   }
 }
 
@@ -250,6 +321,13 @@ function pickSnailTarget(s, world) {
     if (world.food.length) { const f = rng.pick(world.food); return { x: f.x, y: f.y, food: f.id }; }
   }
   if (p === 'glass' || rng.chance(0.25)) {
+    // front pane: pick the dirtiest cell nearby so nerites visibly clean tracks
+    if (rng.chance(0.6) && world.algae.cells) {
+      let best = -1, bv = 0.05;
+      for (let k = 0; k < 12; k++) { const i = rng.int(0, world.algae.cells.length - 1); if (world.algae.cells[i] > bv) { bv = world.algae.cells[i]; best = i; } }
+      const c = best >= 0 ? algaeCellCenter(best) : { x: rng.range(TANK.x0 + 30, TANK.x1 - 30), y: rng.range(TANK.top + 30, TANK.floorFront - 10) };
+      return { x: c.x, y: c.y + 8, z: 0, front: true };
+    }
     const left = rng.chance(0.5);
     return { x: left ? TANK.x0 + 6 : TANK.x1 - 6, y: rng.range(TANK.top + 30, TANK.floorBack - 6), z: 0.5 };
   }
@@ -267,7 +345,7 @@ export function dailySnails(world) {
   const leftover = Math.min(3, world.food.reduce((a, f) => a + f.amount, 0) + (world._snailFed || 0) * 4);
   world._snailFed = 0;
   if (breeders.length && world.snails.length < 30) {
-    const expected = breeders.length * 0.05 * (0.4 + leftover);
+    const expected = breeders.length * 0.05 * (0.4 + leftover) * (world.pace || 1);
     const n = Math.floor(expected + rng.next());
     for (let i = 0; i < n; i++) { const parent = rng.pick(breeders); createSnail(world, parent.type, parent.x + rng.range(-20, 20), undefined, parent.z); }
     if (n > 0 && rng.chance(0.25)) narrate(world, 'snailBreed');

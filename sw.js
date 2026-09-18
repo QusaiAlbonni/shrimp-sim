@@ -1,7 +1,7 @@
 // Service worker: makes the game work offline after the first visit.
 // Code files are network-first (so deploys show up), assets cache-first
 // (they are versioned by the manifest query string).
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `shrimptank-${VERSION}`;
 const CORE = ['./', './index.html', './styles.css', './app.webmanifest', './src/main.js', './src/loader.js', './src/rng.js', './src/game.js', './src/audio.js',
   './src/sim/world.js', './src/sim/shrimp.js', './src/sim/ecology.js', './src/sim/genetics.js', './src/sim/narrative.js',

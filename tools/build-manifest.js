@@ -8,7 +8,7 @@ const ROOT = new URL('../assets/', import.meta.url).pathname;
 
 // Tiers: "core" must finish before the game starts; "stream" loads in the
 // background after the tank is on screen and swaps in when ready.
-const STREAM = new Set(['bamboo', 'backdrop', 'mossball', 'hut', 'tube', 'cave']);
+const STREAM = new Set(['bamboo', 'backdrop', 'mossball', 'hut', 'tube', 'cave', 'boat', 'chest', 'castle', 'sign', 'diver', 'rockwall']);
 
 const assets = [];
 for (const dir of ['sprites', 'data']) {

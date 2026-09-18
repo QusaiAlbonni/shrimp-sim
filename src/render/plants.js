@@ -10,6 +10,9 @@ export function drawPlant(ctx, p, type, t, extras = {}) {
     case 'javafern': drawFern(ctx, sz, sway); break;
     case 'stem': drawStem(ctx, sz, sway, t); break;
     case 'floating': drawFloating(ctx, sz, t, p); break;
+    case 'crypt': drawCrypt(ctx, sz, sway); break;
+    case 'buce': drawBuce(ctx, sz, sway, p); break;
+    case 'hairgrass': drawHairgrass(ctx, sz, t, p); break;
   }
   ctx.restore();
 }
@@ -100,5 +103,50 @@ function drawFloating(ctx, sz, t, p) {
     ctx.fillStyle = i % 2 ? '#7cc45a' : '#69b34a';
     ctx.beginPath(); ctx.ellipse(x, 2, r, r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(x - r * 0.3, 0, r * 0.4, r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawCrypt(ctx, sz, sway) {
+  const n = 4 + Math.round(sz * 3);
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI / 2 + (i - (n - 1) / 2) * 0.34;
+    const len = 80 * sz * (0.7 + ((i * 29) % 10) / 30);
+    const ex = Math.cos(ang) * len + sway * 0.8, ey = Math.sin(ang) * len;
+    ctx.fillStyle = i % 2 ? 'rgba(96,110,52,0.92)' : 'rgba(120,92,58,0.92)';
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    for (let k = 1; k <= 4; k++) { const f = k / 4; const wob = Math.sin(k * 2.1 + i) * 4; ctx.quadraticCurveTo(ex * (f - 0.12) - 10 - wob, ey * (f - 0.12), ex * f - 6 * (1 - f), ey * f); }
+    for (let k = 4; k >= 1; k--) { const f = k / 4; const wob = Math.sin(k * 2.1 + i + 1) * 4; ctx.quadraticCurveTo(ex * (f - 0.12) + 10 + wob, ey * (f - 0.12), ex * (f - 0.25) + 6 * (1 - f), ey * (f - 0.25)); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,190,120,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(ex * 0.5, ey * 0.5, ex, ey); ctx.stroke();
+  }
+}
+
+function drawBuce(ctx, sz, sway, p) {
+  const n = 5 + Math.round(sz * 5);
+  ctx.fillStyle = '#3a2a1c'; ctx.beginPath(); ctx.ellipse(0, -4, 14 * sz + 6, 5, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < n; i++) {
+    const a = ((p.id * 7 + i * 131) % 100) / 100;
+    const ang = -Math.PI / 2 + (a - 0.5) * 1.8;
+    const len = 26 * sz * (0.6 + a * 0.6);
+    const ex = Math.cos(ang) * len + sway * 0.3, ey = Math.sin(ang) * len - 4;
+    ctx.strokeStyle = '#2f3a24'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(ex * 0.7, ey * 0.7); ctx.stroke();
+    ctx.save(); ctx.translate(ex, ey); ctx.rotate(ang + Math.PI / 2);
+    ctx.fillStyle = i % 3 === 0 ? '#2f5a3a' : i % 3 === 1 ? '#264a3a' : '#3a5a48';
+    ctx.beginPath(); ctx.ellipse(0, -7 * sz, 5.5 * sz, 10 * sz, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(140,200,220,0.28)'; ctx.beginPath(); ctx.ellipse(-1.5 * sz, -9 * sz, 2 * sz, 4 * sz, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawHairgrass(ctx, sz, t, p) {
+  const w = 60 * (0.5 + sz * 0.5), h = 30 * sz;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 70; i++) {
+    const a = ((p.id * 13 + i * 197) % 100) / 100, b = ((p.id * 3 + i * 53) % 100) / 100;
+    const x = (a - 0.5) * 2 * w;
+    const len = h * (0.6 + b * 0.5);
+    const sway = Math.sin(t * 1.4 + i * 0.3 + p.x * 0.01) * 3 * (len / h);
+    ctx.strokeStyle = i % 3 ? 'rgba(110,190,70,0.9)' : 'rgba(70,140,50,0.9)';
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.quadraticCurveTo(x + sway * 0.5, -len * 0.6, x + sway + (a - 0.5) * 4, -len); ctx.stroke();
   }
 }

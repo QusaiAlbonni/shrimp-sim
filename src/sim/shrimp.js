@@ -17,8 +17,9 @@ export function createShrimp(world, opts = {}) {
     const base = opts.parents ? (opts.parentTraits[0][t] + opts.parentTraits[1][t]) / 2 : 0.5;
     p[t] = clamp(base + rng.gauss() * (opts.parents ? 0.14 : 0.22), 0.05, 0.95);
   }
+  const species = opts.species || (genome.P[0] === 'b' && genome.P[1] === 'b' ? 'caridina' : 'neocaridina');
   const s = {
-    id: world.nextId++, nickname: null, sex, genome, pheno: phenotype(genome, sex),
+    id: world.nextId++, nickname: null, sex, genome, species, pheno: phenotype(genome, sex),
     born: world.day - age, age, stage: age >= 40 ? 'adult' : 'juvenile',
     size: opts.size ?? (age >= 40 ? (sex === 'F' ? rng.range(0.85, 1) : rng.range(0.7, 0.85)) : 0.15 + age * 0.014),
     health: 1, hunger: rng.range(0.2, 0.5), stress: 0.1, energy: rng.range(0.6, 1),
@@ -75,8 +76,8 @@ export function update(s, world, dt) {
   // old age
   if (s.age > s.lifespan && rng.chance(0.02 * dt)) { die(s, world, 'oldAge'); return; }
 
-  // molting
-  s.moltIn -= dt / 24;
+  // molting: well-fed shrimp grow faster (hunger 0 → 1.3×, starving → 0.7×)
+  s.moltIn -= (dt / 24) * (world.pace || 1) * (1 + (0.5 - s.hunger) * 0.6);
   if (s.moltIn <= 0) { attemptMolt(s, world); if (s.dead) return; }
 
   // eggs
@@ -100,6 +101,7 @@ function updateStress(s, world, dt) {
   if (world.light.on && !(s.hiding && s.arrived) && s.p.bold < 0.5) t += (0.5 - s.p.bold) * 0.3 * (world.light.intensity / 3);
   if (w.o2 < 0.5) t += 0.5 - w.o2;
   if (hasQ(s, 'grumpy') && s.crowdNear >= 3) t += 0.2;
+  if (s.species === 'caridina') { if (w.gh > 6) t += (w.gh - 6) * 0.06; if (w.ph > 7.0) t += (w.ph - 7.0) * 0.35; }
   if (s.hiding && s.arrived) t -= 0.2;
   if (s.friendNear) t -= 0.1;
   t -= (world._mossFactor || 0) * 0.1;
@@ -155,6 +157,7 @@ function attemptMolt(s, world) {
   if (s.stage === 'adult' && rng.chance(0.35)) narrate(world, 'molt', { name: displayName(s), ids: [s.id] });
   if (s.sex === 'F' && s.stage === 'adult' && s.health > 0.5 && !s.berried && w.temp >= 19 && w.temp <= 27.5) {
     s.receptiveUntil = world.time + 20;
+    if (world.shrimp.some((m) => m.sex === 'M' && m.stage === 'adult' && m.species === s.species) && rng.chance(0.6)) narrate(world, 'pheromone', { name: displayName(s), ids: [s.id] });
   }
   s.decideIn = 0;
 }
@@ -184,7 +187,7 @@ function fertilize(f, m, world) {
 
 function updateBerried(s, world, dt) {
   const w = world.water, rng = world.rng;
-  s.berried.days += dt / 24;
+  s.berried.days += (dt / 24) * (world.pace || 1);
   const risk = (w.instability > 0.6 ? 0.02 : 0) + (w.nh3 > 0.5 ? 0.03 : 0) + (s.stress > 0.8 ? 0.01 : 0);
   if (risk && rng.chance(risk * dt)) {
     s.berried = null;
@@ -263,13 +266,13 @@ function decide(s, world) {
     const d = dist(f, s); if (d < fd) { fd = d; food = f; }
   }
   const eaters = food ? world.shrimp.filter((o) => o.foodTarget === food.id).length : 0;
-  sc.eat = food ? s.hunger * (0.7 + s.p.greedy * 0.8) * (hasQ(s, 'glutton') ? 1.4 : 1) * (hasQ(s, 'early_bird') ? 1.25 : 1) * (1 - fd / 2500)
+  sc.eat = food ? (s.hunger + (food.age < 1 ? 0.35 : 0)) * (0.7 + s.p.greedy * 0.8) * (hasQ(s, 'glutton') ? 1.4 : 1) * (hasQ(s, 'early_bird') ? 1.25 : 1) * (1 - fd / 2500)
     - L * (0.5 - s.p.bold) * 0.3 - (eaters >= 4 && !hasQ(s, 'bully') ? 0.15 : 0) : -9;
   sc.graze = 0.25 + s.hunger * 0.5 * (0.3 + world.biofilm) + (hasQ(s, 'filter_hugger') ? 0.2 : 0);
   sc.social = s.p.social * 0.45 + (s.friends.length ? 0.25 : 0);
   sc.explore = s.p.curious * 0.5 + (s.obsession ? 0.55 : 0) + (hasQ(s, 'climber') ? 0.25 : 0) + (hasQ(s, 'wallflower') ? 0.25 : 0);
   sc.rest = (1 - s.energy) * 1.3 + s.p.lazy * 0.3 + (hasQ(s, 'nocturnal') && L > 0.3 ? 0.3 : 0) + (world.light.on ? 0 : 0.15);
-  const receptive = s.sex === 'M' && s.stage === 'adult' ? world.shrimp.filter((f) => f.receptiveUntil > world.time && !f.berried) : [];
+  const receptive = s.sex === 'M' && s.stage === 'adult' ? world.shrimp.filter((f) => f.receptiveUntil > world.time && !f.berried && f.species === s.species) : [];
   sc.mate = receptive.length ? 1.6 * (0.5 + s.p.bold) : -9;
   sc.zoom = (hasQ(s, 'zoomer') ? 0.35 : 0.02) + (hasQ(s, 'dancer') ? 0.25 : 0) + (s.energy > 0.8 ? 0.05 : 0);
   sc.bubble = hasQ(s, 'bubble_chaser') && world.decor.some((d) => d.type === 'filter') ? 0.35 : -9;
@@ -324,7 +327,7 @@ function decide(s, world) {
     case 'rest': s.target = { x: s.x, y: s.y, z: s.z }; s.arrived = true; s.dwell = rng.range(1, 3); s.atSpot = near ? near.id : null; break;
     case 'mate': {
       const f = rng.weighted(receptive, (x) => 1 / (1 + dist(x, s) / 200));
-      s.target = { x: f.x, y: f.y, z: f.z }; s.chasing = f.id; s.mode = 'swim'; s.dwell = 0.5; break;
+      s.target = { x: f.x, y: f.y, z: f.z }; s.chasing = f.id; s.mode = 'swim'; s.frantic = true; s.dwell = 0.5; break;
     }
     case 'zoom': s.target = { x: rng.range(TANK.x0 + 40, TANK.x1 - 40), y: rng.range(TANK.top + 40, TANK.floorBack - 40), z: rng.next() }; s.mode = 'swim'; s.dwell = 0.1; break;
     case 'bubble': {
@@ -334,14 +337,21 @@ function decide(s, world) {
     case 'snail': { const sn = rng.pick(world.snails); s.target = { x: sn.x, y: sn.y - 6, z: sn.z ?? 0.5 }; s.riding = sn.id; s.dwell = rng.range(0.5, 1.5); break; }
   }
   if (best !== 'snail') s.riding = null;
-  if (best !== 'mate') s.chasing = null;
+  if (best !== 'mate') { s.chasing = null; s.frantic = false; }
   s.decideIn = s.dwell + rng.range(0.2, 0.8);
 }
 
 function move(s, world, dt) {
   if (!s.target) return;
   // moving targets
-  if (s.chasing) { const f = world.shrimp.find((o) => o.id === s.chasing); if (f) { s.target.x = f.x; s.target.y = f.y; s.target.z = f.z; } }
+  if (s.chasing) {
+    const f = world.shrimp.find((o) => o.id === s.chasing);
+    if (f) {
+      // frantic courtship: orbit the female erratically instead of beelining
+      const ph = world.time * 70 + s.id * 2.1;
+      s.target.x = f.x + Math.sin(ph) * 46; s.target.y = Math.max(TANK.top + 14, f.y - 14 + Math.cos(ph * 0.8) * 22); s.target.z = f.z;
+    }
+  }
   if (s.riding) { const sn = world.snails.find((o) => o.id === s.riding); if (sn) { s.target.x = sn.x; s.target.y = sn.y - 6 * sn.size; s.target.z = sn.z ?? 0.5; } }
   const dx = s.target.x - s.x, dy = s.target.y - s.y;
   const d = Math.hypot(dx, dy);
@@ -349,7 +359,7 @@ function move(s, world, dt) {
   if (d < 5) { s.arrived = true; s.moving = false; return; }
   s.arrived = false; s.moving = true;
   const lazy = 1.15 - 0.5 * s.p.lazy;
-  const speed = (s.mode === 'swim' ? 260 : 75) * (0.55 + 0.6 * s.size) * lazy;
+  const speed = (s.mode === 'swim' ? 260 : 75) * (0.55 + 0.6 * s.size) * lazy * (s.frantic ? 1.8 : 1);
   const step = Math.min(d, speed * dt);
   s.x += (dx / d) * step; s.y += (dy / d) * step;
   if (s.target.z != null) s.z = clamp(s.z + (s.target.z - s.z) * Math.min(1, step / d), 0, 1);
@@ -360,6 +370,11 @@ function move(s, world, dt) {
 
 function act(s, world, dt) {
   const rng = world.rng;
+  if (!s.arrived && s.action === 'mate') {
+    const f = world.shrimp.find((o) => o.id === s.chasing);
+    if (f && f.receptiveUntil > world.time && !f.berried && dist(f, s) < 62 && rng.chance(0.8 * dt)) { fertilize(f, s, world); s.frantic = false; s.decideIn = 0; }
+    return;
+  }
   if (!s.arrived) {
     // interrupt: fresh food nearby and hungry
     if (s.hunger > 0.5 && s.action !== 'eat' && s.action !== 'mate' && s.noFoodUntil <= 0 && rng.chance(0.3 * dt)) {
@@ -392,12 +407,42 @@ function act(s, world, dt) {
     }
     case 'mate': {
       const f = world.shrimp.find((o) => o.id === s.chasing);
-      if (!f || f.receptiveUntil <= world.time || f.berried) { s.decideIn = 0; break; }
-      if (dist(f, s) < 62 && rng.chance(1.2 * dt)) { fertilize(f, s, world); s.decideIn = 0; }
+      if (!f || f.receptiveUntil <= world.time || f.berried) { s.frantic = false; s.decideIn = 0; break; }
+      if (dist(f, s) < 62 && rng.chance(1.2 * dt)) { fertilize(f, s, world); s.frantic = false; s.decideIn = 0; }
       break;
     }
     case 'zoom': case 'bubble': s.decideIn = Math.min(s.decideIn, 0.15); break;
   }
+}
+
+// ---- hearts: compatible pairs in courtship the player can nudge ------------------------------
+export function computeHearts(world) {
+  const hearts = [];
+  for (const f of world.shrimp) {
+    if (f.sex !== 'F' || f.berried || f.receptiveUntil <= world.time || f.stage !== 'adult') continue;
+    let best = null, bd = 80;
+    for (const m of world.shrimp) {
+      if (m.sex !== 'M' || m.stage !== 'adult' || m.species !== f.species) continue;
+      const d = dist(m, f); if (d < bd) { bd = d; best = m; }
+    }
+    if (best) hearts.push({ x: (f.x + best.x) / 2, y: Math.min(f.y, best.y) - 34, f: f.id, m: best.id });
+  }
+  world._hearts = hearts;
+  return hearts;
+}
+
+export function heartBaby(world, fId, mId) {
+  const f = world.shrimp.find((s) => s.id === fId), m = world.shrimp.find((s) => s.id === mId);
+  if (!f || !m || f.species !== m.species) return null;
+  const rng = world.rng;
+  const { genome } = combine(makeGamete(m.genome, rng), makeGamete(f.genome, rng));
+  const baby = createShrimp(world, { genome, age: 0, size: 0.15, parents: [f.id, m.id], parentTraits: [f.p, m.p], gen: Math.max(f.gen, m.gen) + 1, x: f.x + rng.range(-20, 20), y: f.y, z: f.z, species: f.species });
+  world.shrimp.push(baby);
+  f.receptiveUntil = 0; m.frantic = false; m.decideIn = 0;
+  world.stats.births++;
+  narrate(world, 'heartBaby', { name: displayName(f), other: displayName(m), ids: [f.id, m.id] });
+  if (!world.dex[baby.pheno.name]) { world.dex[baby.pheno.name] = { first: world.day, stars: baby.pheno.stars, count: 0 }; narrate(world, 'newMorph', { morph: baby.pheno.name }); }
+  return baby;
 }
 
 // ---- personal space: push overlapping shrimp apart --------------------------------------------

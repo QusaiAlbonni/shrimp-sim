@@ -44,6 +44,7 @@
           <button id="btnExport">Export save…</button>
           <button id="btnImport">Import save…</button>
           <input id="importFile" type="file" accept="application/json" hidden>
+          <label class="row">Pace <select id="paceSelect"><option value="0.5">Relaxed</option><option value="0.7">Calm</option><option value="1">Normal</option><option value="1.5">Fast</option></select></label>
           <button id="btnReset" class="danger">New tank</button>
           <small>Autosaves every 20s. Time keeps passing while you're away (up to 3 days).</small>
         </div>
@@ -52,6 +53,12 @@
     <main class="main">
       <div class="tank-wrap">
         <canvas id="tank" width="960" height="540" aria-label="Aquarium"></canvas>
+        <div class="toolbar" role="toolbar" aria-label="Tools">
+          <button data-tool="inspect" class="active" title="Inspect (Esc)">🔍 Inspect</button>
+          <button data-tool="feed" title="Feed (F)">🍽 <span id="toolFeedLabel">Feed</span></button>
+          <button data-tool="scrub" title="Scrub glass (S)">🧽 Scrub</button>
+          <button data-tool="trim" title="Trim plants (T)">✂️ Trim</button>
+        </div>
         <div id="toasts" class="toasts"></div>
       </div>
       <aside class="panel">

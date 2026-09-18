@@ -1,5 +1,5 @@
 {
-  "version": "mu4nk72u",
+  "version": "mu6uzjdo",
   "assets": [
     {
       "id": "backdrop",
@@ -23,6 +23,20 @@
       "bytes": 443
     },
     {
+      "id": "boat",
+      "url": "sprites/boat.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 1200
+    },
+    {
+      "id": "castle",
+      "url": "sprites/castle.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 1600
+    },
+    {
       "id": "cave",
       "url": "sprites/cave.svg",
       "type": "svg",
@@ -30,11 +44,25 @@
       "bytes": 690
     },
     {
+      "id": "chest",
+      "url": "sprites/chest.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 1037
+    },
+    {
       "id": "cholla",
       "url": "sprites/cholla.svg",
       "type": "svg",
       "tier": "core",
       "bytes": 838
+    },
+    {
+      "id": "diver",
+      "url": "sprites/diver.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 899
     },
     {
       "id": "driftwood",
@@ -93,6 +121,20 @@
       "bytes": 1569
     },
     {
+      "id": "rockwall",
+      "url": "sprites/rockwall.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 1343
+    },
+    {
+      "id": "sign",
+      "url": "sprites/sign.svg",
+      "type": "svg",
+      "tier": "stream",
+      "bytes": 659
+    },
+    {
       "id": "tube",
       "url": "sprites/tube.svg",
       "type": "svg",
@@ -104,14 +146,14 @@
       "url": "data/events.json",
       "type": "json",
       "tier": "core",
-      "bytes": 4894
+      "bytes": 5587
     },
     {
       "id": "names",
       "url": "data/names.json",
       "type": "json",
       "tier": "core",
-      "bytes": 1388
+      "bytes": 1693
     },
     {
       "id": "quirks",

@@ -3,10 +3,17 @@
 A small aquarium simulator that runs entirely in the browser. No build step,
 no dependencies: plain ES modules and a canvas.
 
-You manage a 40 litre Neocaridina tank: water chemistry, plants, algae,
-hiding spots, food, snails and lighting. The shrimp have personalities,
-memories, quirks and friendships, and their genetics carry hidden alleles that
-surface as new colour morphs (or, rarely, brand-new mutations).
+You manage a shrimp tank: water chemistry, plants, algae on the glass you
+scrub by hand, hiding spots, food, snails and lighting. The shrimp have
+personalities, memories, quirks and friendships, and their genetics carry
+hidden alleles that surface as new colour morphs (or, rarely, brand-new
+mutations). Neocaridina and Caridina (crystal) lines never interbreed.
+
+Tools on the tank: Inspect, Feed (click to drop), Scrub (drag across the
+glass), Trim (drag across a plant). Hearts appear over courting pairs and can
+be clicked for an instant shrimplet. The shop sells food, shrimp lines, plants,
+hardscape, novelty decorations, snails, tank models and backgrounds. A Pace
+setting in the ⋯ menu scales all biological timers.
 
 ## Run locally
 

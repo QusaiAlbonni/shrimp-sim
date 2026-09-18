@@ -135,3 +135,11 @@ small.bad { color: var(--bad); }
 .guide p { font-size: 13px; line-height: 1.55; margin: 6px 0; }
 .guide ul { padding-left: 18px; font-size: 13px; line-height: 1.5; margin: 4px 0; }
 .guide li { margin: 3px 0; }
+
+.toolbar { position: absolute; left: 20px; top: 20px; display: flex; gap: 4px; background: rgba(8,30,40,0.75); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.toolbar button { padding: 4px 9px; font-size: 12px; background: transparent; border-color: transparent; }
+.toolbar button.active { background: var(--accent); border-color: var(--accent); }
+.shopcats { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 4px; }
+.shopcats button { padding: 4px 9px; font-size: 12px; }
+.item.owned button { background: #1f4a3a; }
+@media (max-width: 900px) { .toolbar { left: 12px; top: 12px; } .toolbar button { padding: 4px 6px; } }

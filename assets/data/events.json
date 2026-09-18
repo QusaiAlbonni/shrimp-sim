@@ -104,9 +104,26 @@
     "The snail and {name} are sharing the {object}. Neither seems to mind.",
     "{name} has been fanning its little legs at nothing in particular.",
     "{name} climbed to the top of the {object} and surveyed its domain.",
-    "{name} ate a chunk of the old molt. Waste not."
+    "{name} ate a chunk of the old molt. Waste not.",
+    "{name} watched a nerite clean a patch of the front glass for a full hour."
   ],
   "away": [
     "While you were away: {days} days passed, {births} shrimplets hatched, {deaths} lost."
+  ],
+  "pheromone": [
+    "{name} just molted and every male in the tank is swimming laps. Pheromones.",
+    "The males are going frantic. {name} must have molted."
+  ],
+  "heartBaby": [
+    "You gave {name} and {other} a nudge. A single shrimplet appeared in the moss.",
+    "{name} and {other} paired off. One tiny shrimplet."
+  ],
+  "trim": [
+    "Trimmed the {object}. The cutting went to the shop for ${n}.",
+    "A quick haircut for the {object}. ${n} for the cutting."
+  ],
+  "newTank": [
+    "Moved everyone into the {object}. They'll sulk for a day.",
+    "New tank: {object}. Fresh glass, same shrimp."
   ]
 }

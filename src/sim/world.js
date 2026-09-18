@@ -3,11 +3,25 @@ import { RNG, clamp } from '../rng.js';
 import { presetGenome, phenotype } from './genetics.js';
 import * as Shrimp from './shrimp.js';
 import * as Eco from './ecology.js';
-import { TANK, DECOR, PLANTS, FOODS, SNAILS, floorY, zOf } from './ecology.js';
+import { TANK, DECOR, PLANTS, FOODS, SNAILS, TANK_MODELS, BACKGROUNDS, floorY, zOf, initAlgaeCells, scrubAt } from './ecology.js';
 import { narrate, displayName, nounFor } from './narrative.js';
 
-export { TANK, DECOR, PLANTS, FOODS, SNAILS };
-export const SAVE_VERSION = 1;
+export { TANK, DECOR, PLANTS, FOODS, SNAILS, TANK_MODELS, BACKGROUNDS };
+export const SAVE_VERSION = 2;
+
+export const SHRIMP_PACKS = {
+  cherry: { price: 10, preset: 'cherry', label: 'Red Cherry pair', desc: 'Hardy starter reds.', species: 'neocaridina' },
+  blue: { price: 24, preset: 'blue', label: 'Blue Dream pair', desc: 'Recessive blue. Cross with your reds.', species: 'neocaridina' },
+  yellow: { price: 18, preset: 'yellow', label: 'Yellow pair', desc: 'Bright yellow line.', species: 'neocaridina' },
+  orange: { price: 20, preset: 'orange', label: 'Orange Sakura pair', desc: 'Warm orange line.', species: 'neocaridina' },
+  green: { price: 28, preset: 'green', label: 'Green Jade pair', desc: 'Uncommon green pigment.', species: 'neocaridina' },
+  black: { price: 30, preset: 'black', label: 'Black Rose pair', desc: 'Dominant black pigment.', species: 'neocaridina' },
+  snow: { price: 22, preset: 'snow', label: 'Snowball pair', desc: 'White. Shows every other colour it carries.', species: 'neocaridina' },
+  rili: { price: 20, preset: 'rili', label: 'Red Rili pair', desc: 'Clear-bodied pattern gene.', species: 'neocaridina' },
+  crystalRed: { price: 38, preset: 'crystalRed', label: 'Crystal Red pair', desc: 'Caridina. White-striped. Needs soft, acidic water and cannot breed with Neocaridina.', species: 'caridina' },
+  crystalBlack: { price: 38, preset: 'crystalBlack', label: 'Crystal Black pair', desc: 'Caridina. Black bands on white. Soft water only.', species: 'caridina' },
+  mystery: { price: 16, preset: 'mystery', label: 'Mystery bag', desc: 'Two random Neocaridina. Could carry anything.', species: 'neocaridina' },
+};
 
 export function createWorld(seed = (Date.now() % 1000000) | 0) {
   const world = {
@@ -16,7 +30,8 @@ export function createWorld(seed = (Date.now() % 1000000) | 0) {
     water: { temp: 22, gh: 7, kh: 3, tds: 180, ph: 7.2, nh3: 0, no2: 0, no3: 8, o2: 0.85, tannin: 0, bacteria: 0.75, instability: 0.05, base: { temp: 22, ph: 7.2, tds: 180 } },
     light: { hours: 8, start: 9, intensity: 2, on: false },
     heater: { on: false, target: 23 },
-    biofilm: 0.35, algae: { film: 0.08, hair: 0, diatom: 0.1 },
+    biofilm: 0.35, algae: { film: 0.08, hair: 0, diatom: 0.1, cells: initAlgaeCells(0.08) },
+    tank: { model: 'standard', background: 'jungle' }, owned: { tanks: ['standard'], backgrounds: ['jungle'] }, pace: 0.7,
     decor: [], plants: [], snails: [], food: [], molts: [], shrimp: [],
     inventory: { pellet: 8, wafer: 4, zucchini: 2, leaf: 1, pollen: 0 },
     log: [], dex: {}, stats: { births: 0, deaths: 0, sold: 0, molts: 0, earned: 0 },
@@ -80,6 +95,7 @@ export function tick(world, dt) {
   Eco.updateSnails(world, dt);
   for (const s of world.shrimp) Shrimp.update(s, world, dt);
   Shrimp.separate(world);
+  Shrimp.computeHearts(world);
   if (world.shrimp.some((s) => s.dead)) {
     world.shrimp = world.shrimp.filter((s) => !s.dead);
   }
@@ -156,7 +172,13 @@ export const actions = {
     // Clicking within the substrate band picks the depth; higher up gets a random depth.
     const z = y != null && y >= TANK.floorBack - 6 ? zOf(y) : rng.next();
     const fy = t.leaf ? floorY(z) - 4 : clamp(y ?? floorY(z) - 4, TANK.top + 20, floorY(z) - 3);
-    world.food.push({ id: world.nextId++, type, x: fx, y: fy, z, amount: t.amount, age: 0 });
+    const item = { id: world.nextId++, type, x: fx, y: fy, z, amount: t.amount, age: 0 };
+    world.food.push(item);
+    // hungry shrimp that like this food notice it immediately and head over
+    for (const s of world.shrimp) {
+      if (s.action === 'mate' || s.moltRecent > 0 || !Shrimp.likesFood(s, type)) continue;
+      if (s.hunger > 0.25 - s.p.greedy * 0.15 && Math.hypot(s.x - fx, s.y - fy) < 520) { s.decideIn = Math.min(s.decideIn, rng.range(0, 0.08)); s.noFoodUntil = 0; }
+    }
     return { ok: true, msg: `${t.name} dropped in.` };
   },
   waterChange(world, pct) {
@@ -168,7 +190,32 @@ export const actions = {
     world.stats.waterChanges = (world.stats.waterChanges || 0) + 1;
     return { ok: true, msg: `${pct}% water change done.` };
   },
-  scrub(world) { world.algae.film *= 0.15; world.algae.hair *= 0.6; world.algae.diatom *= 0.3; return { ok: true, msg: 'Glass scrubbed.' }; },
+  scrubAt(world, x, y) { const removed = scrubAt(world, x, y); world.algae.diatom = Math.max(0, world.algae.diatom - removed * 0.02); return { ok: true, removed }; },
+  trimAt(world, id, frac) {
+    const p = world.plants.find((x) => x.id === id); if (!p) return { ok: false };
+    const t = PLANTS[p.type];
+    const before = p.size;
+    p.size = Math.max(0.15, t.floating ? p.size * 0.6 : p.size * clamp(frac, 0.15, 0.95));
+    p.overgrown = false;
+    const cut = before - p.size;
+    const cash = Math.round(cut * 4);
+    world.money += cash;
+    if (cash > 0) narrate(world, 'trim', { object: nounFor(p.type), n: cash });
+    return { ok: true, msg: cash > 0 ? `Trimmed ${t.name.toLowerCase()}. Cutting sold for $${cash}.` : `Trimmed ${t.name.toLowerCase()}.`, cut };
+  },
+  heart(world, fId, mId) { const baby = Shrimp.heartBaby(world, fId, mId); registerDex(world); return baby ? { ok: true } : { ok: false }; },
+  setPace(world, pace) { world.pace = clamp(pace, 0.25, 2); return { ok: true }; },
+  buyTank(world, key) {
+    const m = TANK_MODELS[key]; if (!m) return { ok: false };
+    if (!world.owned.tanks.includes(key)) { if (world.money < m.price) return { ok: false, msg: 'Not enough money.' }; world.money -= m.price; world.owned.tanks.push(key); }
+    if (world.tank.model !== key) { world.tank.model = key; for (const s of world.shrimp) s.stress = Math.max(s.stress, 0.45); narrate(world, 'newTank', { object: m.name }); }
+    return { ok: true, msg: `Now using the ${m.name}.` };
+  },
+  setBackground(world, key) {
+    const b = BACKGROUNDS[key]; if (!b) return { ok: false };
+    if (!world.owned.backgrounds.includes(key)) { if (world.money < b.price) return { ok: false, msg: 'Not enough money.' }; world.money -= b.price; world.owned.backgrounds.push(key); }
+    world.tank.background = key; return { ok: true, msg: `${b.name} background.` };
+  },
   remineralize(world) {
     const w = world.water; w.gh += 1; w.kh += 0.5; w.tds += 25;
     return { ok: true, msg: 'Minerals added: GH +1, KH +0.5, TDS +25.' };
@@ -182,12 +229,11 @@ export const actions = {
     else if (kind === 'decor') { const t = DECOR[key]; price = t.price; if (world.money < price) return { ok: false, msg: 'Not enough money.' }; if (world.decor.length >= 9) return { ok: false, msg: 'The tank is full of hardscape.' }; addDecor(world, key); msg = `Added ${t.name.toLowerCase()}.`; }
     else if (kind === 'snail') { const t = SNAILS[key]; price = t.price; if (world.money < price) return { ok: false, msg: 'Not enough money.' }; if (world.snails.length >= 30) return { ok: false, msg: 'Enough snails.' }; Eco.createSnail(world, key); msg = `Added a ${t.name.toLowerCase()}.`; }
     else if (kind === 'shrimp') {
-      const packs = { blue: { price: 24, preset: 'blue', label: 'Blue Dream pair' }, yellow: { price: 18, preset: 'yellow', label: 'Yellow pair' }, black: { price: 30, preset: 'black', label: 'Black Rose pair' }, rili: { price: 20, preset: 'rili', label: 'Red Rili pair' }, mystery: { price: 16, preset: 'mystery', label: 'Mystery bag' } };
-      const pk = packs[key]; price = pk.price;
+      const pk = SHRIMP_PACKS[key]; if (!pk) return { ok: false }; price = pk.price;
       if (world.money < price) return { ok: false, msg: 'Not enough money.' };
       if (world.shrimp.length >= 66) return { ok: false, msg: 'The tank is at capacity.' };
       for (const sex of ['F', 'M']) {
-        const s = Shrimp.createShrimp(world, { genome: presetGenome(world.rng, pk.preset), sex, age: world.rng.int(45, 90) });
+        const s = Shrimp.createShrimp(world, { genome: presetGenome(world.rng, pk.preset), sex, age: world.rng.int(45, 90), species: pk.species });
         s.stress = 0.5; world.shrimp.push(s);
       }
       registerDex(world);
@@ -239,6 +285,12 @@ export function deserialize(json) {
     if (s.z == null) { s.z = w.rng.next(); s.y = Math.min(s.y, floorY(s.z) - 4); if (s.target) s.target.z = s.z; } // saves from before depth
   }
   for (const o of [...w.snails, ...w.food, ...w.molts]) if (o.z == null) { o.z = w.rng.next(); o.y = Math.min(o.y, floorY(o.z) - 2); }
+  if (!w.algae.cells) w.algae.cells = initAlgaeCells(w.algae.film);
+  if (!w.tank) w.tank = { model: 'standard', background: 'jungle' };
+  if (!w.owned) w.owned = { tanks: ['standard'], backgrounds: ['jungle'] };
+  if (w.pace == null) w.pace = 0.7;
+  for (const s of w.shrimp) if (!s.species) s.species = s.genome.P[0] === 'b' && s.genome.P[1] === 'b' ? 'caridina' : 'neocaridina';
+  w.v = SAVE_VERSION;
   Eco.buildSpots(w);
   return w;
 }

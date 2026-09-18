@@ -1,6 +1,6 @@
 // Side panel UI. Rendered as innerHTML templates on a throttle; controls use
 // event delegation with data-* attributes so re-rendering never loses handlers.
-import { DECOR, PLANTS, FOODS, SNAILS } from '../sim/world.js';
+import { DECOR, PLANTS, FOODS, SNAILS, TANK_MODELS, BACKGROUNDS, SHRIMP_PACKS } from '../sim/world.js';
 import { swatchShrimp } from '../render/shrimpSprite.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -22,12 +22,13 @@ const status = (k, v) => { const r = RANGES[k]; return v >= r.good[0] && v <= r.
 
 export class UI {
   constructor(game) {
-    this.game = game; this.tab = 'tank'; this.timers = {}; this._dirty = true; this.logSeen = 0; this.logImportant = false;
+    this.game = game; this.tab = 'tank'; this.timers = {}; this._dirty = true; this.logSeen = 0; this.logImportant = false; this.shopCat = 'food';
     this.el = {
       app: document.getElementById('app'), clock: document.getElementById('clock'), money: document.getElementById('money'),
       stream: document.getElementById('streamStatus'), toasts: document.getElementById('toasts'), panel: document.querySelector('.panel'),
       tabs: { tank: document.getElementById('tab-tank'), shrimp: document.getElementById('tab-shrimp'), shop: document.getElementById('tab-shop'), log: document.getElementById('tab-log'), dex: document.getElementById('tab-dex'), guide: document.getElementById('tab-guide') },
       more: document.getElementById('moreMenu'), speedBtns: [...document.querySelectorAll('[data-speed]')], saveBtn: document.getElementById('btnSave'),
+      toolBtns: [...document.querySelectorAll('.toolbar [data-tool]')], toolFeedLabel: document.getElementById('toolFeedLabel'), pace: document.getElementById('paceSelect'),
     };
   }
 
@@ -37,8 +38,8 @@ export class UI {
   mount() {
     const { el } = this;
     el.app.classList.remove('hidden');
-    document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.addEventListener('click', () => this.showTab(b.dataset.tab)));
-    el.speedBtns.forEach((b) => b.addEventListener('click', () => this.game.setSpeed(Number(b.dataset.speed))));
+    document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.addEventListener('click', () => { this.showTab(b.dataset.tab); b.blur(); }));
+    el.speedBtns.forEach((b) => b.addEventListener('click', () => { this.game.setSpeed(Number(b.dataset.speed)); b.blur(); }));
     document.getElementById('btnSound').addEventListener('click', (e) => { const on = this.game.audio.toggle(); e.currentTarget.textContent = on ? '🔊' : '🔇'; });
     el.saveBtn.addEventListener('click', () => this.game.save());
     document.getElementById('btnMore').addEventListener('click', () => el.more.classList.toggle('hidden'));
@@ -46,6 +47,9 @@ export class UI {
     document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importFile').click());
     document.getElementById('importFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) this.game.importSave(await f.text()); e.target.value = ''; el.more.classList.add('hidden'); });
     document.getElementById('btnReset').addEventListener('click', () => { if (confirm('Start over with a brand new tank? This deletes the current save.')) this.game.reset(); el.more.classList.add('hidden'); });
+    el.toolBtns.forEach((b) => b.addEventListener('click', () => { this.game.setTool(this.game.state.tool === b.dataset.tool ? 'inspect' : b.dataset.tool); b.blur(); }));
+    el.pace.value = String(this.world.pace ?? 0.7);
+    el.pace.addEventListener('change', () => { this.game.act('setPace', Number(el.pace.value)); this.toast(`Pace: ${el.pace.options[el.pace.selectedIndex].text.toLowerCase()}. Growth, breeding and algae timers scale with it.`, 'info'); });
     el.panel.addEventListener('click', (e) => this.onPanelClick(e));
     el.panel.addEventListener('input', (e) => this.onPanelInput(e));
     el.panel.addEventListener('change', (e) => this.onPanelInput(e));
@@ -79,6 +83,8 @@ export class UI {
     this.el.clock.textContent = `Day ${w.day} · ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${w.light.on ? '☀' : '☾'}`;
     this.el.money.textContent = `$${w.money}`;
     this.el.speedBtns.forEach((b) => b.classList.toggle('active', st.paused ? b.dataset.speed === '0' : Number(b.dataset.speed) === st.speed));
+    this.el.toolBtns.forEach((b) => b.classList.toggle('active', b.dataset.tool === st.tool));
+    this.el.toolFeedLabel.textContent = st.feedMode ? `${FOODS[st.feedMode].name} ×${w.inventory[st.feedMode] || 0}` : 'Feed';
     this.timers.tab = (this.timers.tab || 0) + dt;
     const interval = this.tab === 'dex' ? 2 : this.tab === 'log' ? 0.5 : 0.7;
     if (this._dirty || this.timers.tab > interval) { this.timers.tab = 0; this.renderTab(this.tab, this._dirty); this._dirty = false; }
@@ -122,7 +128,7 @@ export class UI {
         <div>Light <b>${w.light.on ? 'on' : 'off'}</b> <small>${w.light.hours}h/day</small></div>
       </div>`;
     if (!full && document.activeElement && root.contains(document.activeElement)) return;
-    const inv = Object.keys(FOODS).map((k) => `<button class="chip ${st.feedMode === k ? 'active' : ''}" data-action="feedmode" data-key="${k}" ${w.inventory[k] > 0 ? '' : 'disabled'}><span class="sw" style="background:${FOODS[k].color}"></span>${FOODS[k].name} <b>×${w.inventory[k] || 0}</b></button>`).join('');
+    const inv = Object.keys(FOODS).map((k) => `<button class="chip ${st.tool === 'feed' && st.feedMode === k ? 'active' : ''}" data-action="feedmode" data-key="${k}" ${w.inventory[k] > 0 ? '' : 'disabled'}><span class="sw" style="background:${FOODS[k].color}"></span>${FOODS[k].name} <b>×${w.inventory[k] || 0}</b></button>`).join('');
     const plants = w.plants.map((p) => `<li>${PLANTS[p.type].name} <small>${Math.round((p.size / PLANTS[p.type].max) * 100)}%${p.size >= PLANTS[p.type].max - 0.05 ? ' · overgrown' : ''}</small> <button class="mini" data-action="trim" data-id="${p.id}">Trim</button><button class="mini" data-action="removeplant" data-id="${p.id}">✕</button></li>`).join('');
     const decor = w.decor.map((d) => `<li>${DECOR[d.type].name} <small>hides ${DECOR[d.type].hide}</small> ${d.type === 'filter' ? '' : `<button class="mini" data-action="removedecor" data-id="${d.id}">✕</button>`}</li>`).join('');
     root.querySelector('#controls').innerHTML = `
@@ -132,7 +138,8 @@ export class UI {
       <div class="btnrow">
         <button data-action="wc" data-key="20">Water change 20%</button>
         <button data-action="wc" data-key="40">Water change 40%</button>
-        <button data-action="scrub">Scrub glass</button>
+        <button data-action="tool" data-key="scrub" class="${st.tool === 'scrub' ? 'active' : ''}">🧽 Scrub tool</button>
+        <button data-action="tool" data-key="trim" class="${st.tool === 'trim' ? 'active' : ''}">✂️ Trim tool</button>
         <button data-action="remin">Add minerals</button>
       </div>
       <h3>Light &amp; heat</h3>
@@ -171,7 +178,7 @@ export class UI {
       <div class="cardhead"><span class="bigdot" style="background:rgba(${r},${g},${b},${ph.opacity})"></span>
         <div><div class="cardname">${esc(st.nameOf(s))} <button class="mini" data-action="rename" data-id="${s.id}">rename</button></div>
         <div class="morph">${esc(ph.name)} <span class="stars">${stars(ph.stars)}</span></div></div></div>
-      <div class="meta">${s.sex === 'F' ? 'Female' : 'Male'} · ${s.stage} · ${Math.floor(s.age)} days · gen ${s.gen} · ${action}${s.berried ? ` · <b>berried</b> (${Math.round((s.berried.days / s.berried.hatchAt) * 100)}%)` : ''}${s.moltRecent > 0 ? ' · just molted' : ''}</div>
+      <div class="meta">${s.species === 'caridina' ? 'Caridina' : 'Neocaridina'} · ${s.sex === 'F' ? 'Female' : 'Male'} · ${s.stage} · ${Math.floor(s.age)} days · gen ${s.gen} · ${action}${s.berried ? ` · <b>berried</b> (${Math.round((s.berried.days / s.berried.hatchAt) * 100)}%)` : ''}${s.moltRecent > 0 ? ' · just molted' : ''}</div>
       ${bar('Health', s.health, s.health < 0.4 ? 'bad' : '')}${bar('Hunger', s.hunger, s.hunger > 0.75 ? 'warn' : '')}${bar('Stress', s.stress, s.stress > 0.6 ? 'bad' : '')}
       <h4>Personality</h4>
       <div class="traits">${trait('Bold', s.p.bold)}${trait('Social', s.p.social)}${trait('Curious', s.p.curious)}${trait('Greedy', s.p.greedy)}${trait('Lazy', s.p.lazy)}${trait('Fussy', s.p.fussy)}</div>
@@ -185,13 +192,23 @@ export class UI {
   renderShop() {
     const w = this.world;
     const item = (kind, key, name, price, desc) => `<div class="item"><div><b>${esc(name)}</b><small>${esc(desc)}</small></div><button data-action="buy" data-kind="${kind}" data-key="${key}" ${w.money < price ? 'disabled' : ''}>$${price}</button></div>`;
-    const foods = Object.entries(FOODS).map(([k, t]) => item('food', k, `${t.name} ×${t.pack}`, t.price, t.leaf ? 'Lasts days, grows biofilm, softens water' : t.treat ? 'Protein treat, boosts health' : t.veg ? 'Veggie. Picky eaters approve' : 'Staple food')).join('');
-    const plants = Object.entries(PLANTS).map(([k, t]) => item('plant', k, t.name, t.price, t.mossy ? 'Shrimplet nursery, hides 3' : t.floating ? 'Eats nitrate fast, shades algae' : `Hides ${t.hide}, eats nitrate`)).join('');
-    const decor = Object.entries(DECOR).filter(([k]) => k !== 'filter').map(([k, t]) => item('decor', k, t.name, t.price, `Hides ${t.hide}, biofilm ${Math.round(t.biofilm * 10)}/10`)).join('');
-    const snails = Object.entries(SNAILS).filter(([k]) => k !== 'bladder').map(([k, t]) => item('snail', k, t.name, t.price, t.breeds ? 'Eats algae and leftovers. Breeds.' : 'Algae machine. Cannot breed here.')).join('');
-    const packs = [['blue', 'Blue Dream pair', 24, 'Recessive blue. Cross with your reds.'], ['yellow', 'Yellow pair', 18, 'Bright yellow line'], ['black', 'Black Rose pair', 30, 'Dominant black pigment'], ['rili', 'Red Rili pair', 20, 'Clear-bodied pattern gene'], ['mystery', 'Mystery bag', 16, 'Two random shrimp. Could carry anything.']]
-      .map(([k, n, p, d]) => item('shrimp', k, n, p, d)).join('');
-    this.el.tabs.shop.innerHTML = `<h3>Food</h3>${foods}<h3>Plants</h3>${plants}<h3>Hardscape</h3>${decor}<h3>Snails</h3>${snails}<h3>Shrimp</h3>${packs}<p class="hint">Sell shrimp from their card. Rare morphs fetch far more.</p>`;
+    const cats = [['food', 'Food'], ['shrimp', 'Shrimp'], ['plants', 'Plants'], ['hardscape', 'Hardscape'], ['decor', 'Decorations'], ['snails', 'Snails'], ['tanks', 'Tanks']];
+    const nav = `<div class="shopcats">${cats.map(([k, n]) => `<button data-action="shopcat" data-key="${k}" class="${this.shopCat === k ? 'active' : ''}">${n}</button>`).join('')}</div>`;
+    let body = '';
+    switch (this.shopCat) {
+      case 'food': body = Object.entries(FOODS).map(([k, t]) => item('food', k, `${t.name} ×${t.pack}`, t.price, t.leaf ? 'Lasts days, grows biofilm, softens water' : t.treat ? 'Protein treat, boosts health' : t.veg ? 'Veggie. Picky eaters approve' : 'Staple food')).join(''); break;
+      case 'shrimp': body = Object.entries(SHRIMP_PACKS).map(([k, p]) => item('shrimp', k, p.label, p.price, p.desc)).join('') + '<p class="hint">Neocaridina and Caridina never interbreed. Crystals want GH under 6 and pH under 7.</p>'; break;
+      case 'plants': body = Object.entries(PLANTS).map(([k, t]) => item('plant', k, t.name, t.price, t.mossy ? `Shrimplet nursery, hides ${t.hide}` : t.floating ? 'Eats nitrate fast, shades algae' : `Hides ${t.hide}, eats nitrate${t.rate < 0.01 ? ', very slow grower' : ''}`)).join('') + '<p class="hint">Drag the ✂️ Trim tool across a plant to cut it. Cuttings sell for a little.</p>'; break;
+      case 'hardscape': body = Object.entries(DECOR).filter(([k, t]) => k !== 'filter' && !t.novelty).map(([k, t]) => item('decor', k, t.name, t.price, `Hides ${t.hide}, biofilm ${Math.round(t.biofilm * 10)}/10`)).join(''); break;
+      case 'decor': body = Object.entries(DECOR).filter(([k, t]) => t.novelty).map(([k, t]) => item('decor', k, t.name, t.price, `${t.bubbles ? 'Bubbles! ' : ''}Hides ${t.hide}`)).join(''); break;
+      case 'snails': body = Object.entries(SNAILS).filter(([k]) => k !== 'bladder').map(([k, t]) => item('snail', k, t.name, t.price, t.breeds ? 'Eats algae and leftovers. Breeds.' : 'Algae machine. Crawls the front glass. Cannot breed here.')).join(''); break;
+      case 'tanks': {
+        const tanks = Object.entries(TANK_MODELS).map(([k, t]) => { const owned = w.owned.tanks.includes(k), cur = w.tank.model === k; return `<div class="item ${owned ? 'owned' : ''}"><div><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></div><button data-action="buytank" data-key="${k}" ${cur || (!owned && w.money < t.price) ? 'disabled' : ''}>${cur ? 'In use' : owned ? 'Use' : `$${t.price}`}</button></div>`; }).join('');
+        const bgs = Object.entries(BACKGROUNDS).map(([k, b]) => { const owned = w.owned.backgrounds.includes(k), cur = w.tank.background === k; return `<div class="item ${owned ? 'owned' : ''}"><div><b>${esc(b.name)}</b><small>Background</small></div><button data-action="buybg" data-key="${k}" ${cur || (!owned && w.money < b.price) ? 'disabled' : ''}>${cur ? 'In use' : owned ? 'Use' : `$${b.price}`}</button></div>`; }).join('');
+        body = `<h3>Tank models</h3>${tanks}<h3>Backgrounds</h3>${bgs}`; break;
+      }
+    }
+    this.el.tabs.shop.innerHTML = `${nav}${body}<p class="hint">Sell shrimp from their card. Rare morphs fetch far more.</p>`;
   }
 
   // ---- Log ----
@@ -229,8 +246,11 @@ export class UI {
         <p>Keep the water steady, feed a little, and let the colony breed. Every shrimp has a personality and a genome, and the point of the game is discovering both: watch the <b>Log</b> for quirks, friendships and nicknames, and breed carriers together to reveal hidden colour morphs for the <b>Dex</b>.</p>
         <p><b>Time:</b> at 1× a game day takes 4 minutes. Use 3× or 10× to fast-forward (keys 1/2/3, space pauses). The tank keeps running while you are away, up to 3 days, and autosaves every 20 seconds.</p>
 
+        <h3>Tools</h3>
+        <p>The toolbar on the tank has four tools. <b>Inspect</b> (Esc) selects shrimp. <b>Feed</b> (F) drops the chosen food where you click. <b>Scrub</b> (S) cleans algae off the front glass as you drag across it. <b>Trim</b> (T) cuts a plant where you drag across it; the cutting is sold automatically. Right-click returns to Inspect.</p>
+
         <h3>Feeding</h3>
-        <p>Pick a food on the <b>Tank</b> tab, then click in the tank to drop it; clicking inside the substrate band chooses how far back it lands. Uneaten food rots into ammonia, so feed lightly: a pellet or two per 10 shrimp per day is plenty. Shrimp mostly graze <b>biofilm</b> anyway, and shrimplets depend on it entirely.</p>
+        <p>Pick a food on the <b>Tank</b> tab or the toolbar, then click in the tank to drop it; clicking inside the substrate band chooses how far back it lands. Hungry shrimp head straight for fresh food. Well-fed shrimp molt and grow faster; hungry ones slow down. Uneaten food rots into ammonia, so feed lightly: a pellet or two per 10 shrimp per day is plenty. Shrimp mostly graze <b>biofilm</b> anyway, and shrimplets depend on it entirely.</p>
         <ul>
           <li><b>Pellets</b> are the staple. Picky eaters refuse them.</li>
           <li><b>Algae wafers</b> and <b>zucchini</b> are vegetable foods everyone accepts.</li>
@@ -251,7 +271,10 @@ export class UI {
 
         <h3>Molting and breeding</h3>
         <p>Shrimp molt every few weeks (every few days as juveniles) and hide until the new shell hardens, leaving a white ghost shell others eat for calcium. A molt can fail if GH is low, water is unstable or the shrimp is weak. Big water changes trigger a tank-wide molting wave.</p>
-        <p>After an adult female molts she releases pheromones and every male chases her. If one reaches her she becomes <b>berried</b> and carries 15–30 eggs for about a month. Hatchling survival depends on biofilm, moss and clean water, and drops when the tank is crowded.</p>
+        <p>Shed shells stay on the substrate, get nibbled for calcium, and slowly dissolve, returning a little GH and TDS to the water.</p>
+        <p>After an adult female molts she releases pheromones and every male of her species goes <b>frantic</b>, swimming fast laps around her. If one reaches her she becomes <b>berried</b> and carries 15–30 eggs for about a month. Hatchling survival depends on biofilm, moss and clean water, and drops when the tank is crowded.</p>
+        <p>While a male is courting a female, a <b>heart</b> floats above the pair. Click it to nudge them: one shrimplet appears immediately and she skips carrying eggs that cycle. Natural breeding yields more, the heart is faster.</p>
+        <p><b>Species:</b> Neocaridina (cherries, blues, yellows, and so on) and Caridina (Crystal Red, Crystal Black) never interbreed. Crystals also want soft, slightly acidic water: GH under 6 and pH under 7, or they stay stressed.</p>
 
         <h3>Genetics and morphs</h3>
         <p>Every shrimp carries two copies of each gene. Colour (red, blue, yellow, black, chocolate, orange, green, snow, wild), intensity, pattern (solid, rili, tiger), orange eyes, metallic sheen and the very rare galaxy spotting. Many are recessive: a shrimp can <b>carry</b> blue and look red. The shrimp card lists what it carries. Breed two carriers and a quarter of the clutch shows the trait.</p>
@@ -263,16 +286,22 @@ export class UI {
         <h3>Plants, algae, snails and cover</h3>
         <ul>
           <li><b>Plants</b> eat nitrate and provide hiding room. Moss is a shrimplet nursery. Floating water lettuce eats nitrate fastest but shades everything below; trim it when it takes over.</li>
-          <li><b>Light</b> feeds plants and algae alike. More hours and intensity mean more algae film on the glass, and hair algae when nitrate is high. Scrub the glass or add a nerite.</li>
+          <li><b>Light</b> feeds plants and algae alike. More hours and intensity mean more green algae growing on the front glass in patches, and hair algae when nitrate is high. Scrub it with the tool or add a nerite, which crawls the front pane and eats clean tracks through it.</li>
           <li><b>Snails</b>: nerites are algae machines that cannot breed here. Ramshorn and bladder snails breed on leftover food, and bladder snails hitchhike in on new plants. Too many snails means you are feeding too much.</li>
           <li><b>Hiding room</b>: each piece of hardscape and each plant shelters a few shrimp. When the colony outgrows it, stress rises. Sell shrimp or add cover.</li>
         </ul>
+
+        <h3>Tanks and backgrounds</h3>
+        <p>The <b>Tanks</b> shop category sells bigger tanks and backgrounds. More water dilutes waste and slows parameter drift, and bigger tanks add hiding room. Switching tanks stresses the colony for a day. Backgrounds are cosmetic.</p>
+
+        <h3>Pace</h3>
+        <p>The ⋯ menu has a <b>Pace</b> setting. It scales growth, molting, egg development, snail breeding and algae growth without changing the clock. The default is Calm; Relaxed halves the biology, Fast speeds it up.</p>
 
         <h3>Money</h3>
         <p>You start with $40. Sell shrimp from their card (adults fetch full price, juveniles 40%) and spend it on food, plants, hardscape, snails, or new breeding pairs and mystery bags in the <b>Shop</b>.</p>
 
         <h3>Shortcuts</h3>
-        <p>Space: pause. 1/2/3: speed. Esc: cancel feeding and deselect. Right-click while feeding also cancels.</p>
+        <p>Space: pause. 1/2/3: speed. F / S / T: feed, scrub, trim tools. Esc or right-click: back to Inspect and deselect.</p>
       </div>`;
   }
 
@@ -281,9 +310,12 @@ export class UI {
     const b = e.target.closest('[data-action]'); if (!b) return;
     const g = this.game, w = this.world, id = Number(b.dataset.id);
     switch (b.dataset.action) {
-      case 'feedmode': g.state.feedMode = g.state.feedMode === b.dataset.key ? null : b.dataset.key; this.dirty(); break;
+      case 'feedmode': if (g.state.tool === 'feed' && g.state.feedMode === b.dataset.key) g.setTool('inspect'); else g.setTool('feed', b.dataset.key); break;
+      case 'tool': g.setTool(g.state.tool === b.dataset.key ? 'inspect' : b.dataset.key); break;
+      case 'shopcat': this.shopCat = b.dataset.key; this.renderShop(); break;
+      case 'buytank': g.act('buyTank', b.dataset.key); this.renderShop(); break;
+      case 'buybg': g.act('setBackground', b.dataset.key); this.renderShop(); break;
       case 'wc': g.act('waterChange', Number(b.dataset.key)); break;
-      case 'scrub': g.act('scrub'); break;
       case 'remin': g.act('remineralize'); break;
       case 'trim': g.act('trim', id); break;
       case 'removeplant': if (confirm('Remove this plant?')) g.act('remove', 'plants', id); break;

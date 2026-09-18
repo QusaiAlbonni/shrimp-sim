@@ -97,6 +97,17 @@ export function drawShrimp(ctx, s, t, opts = {}) {
     ctx.fill(); ctx.strokeStyle = outline; ctx.lineWidth = 0.5; ctx.stroke();
   };
   if (ph.rili && !ghost) { paint(BODY, 0.1); paint(HEAD); paint(TAILSEG); }
+  else if (ph.crystal && !ghost) {
+    // crystal shrimp: opaque white body with coloured bands on the head, mid-abdomen and tail
+    ctx.beginPath(); curve(ctx, BODY, true); ctx.fillStyle = `rgba(245,245,240,${0.55 + ph.tier * 0.1})`; ctx.fill(); ctx.strokeStyle = outline; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.save(); ctx.beginPath(); curve(ctx, BODY, true); ctx.clip();
+    ctx.fillStyle = grad;
+    ctx.fillRect(-15, -9, 7, 18);           // head band
+    ctx.fillRect(-4, -9, 6.5, 18);          // carapace back
+    ctx.fillRect(6, -9, 4.5, 18);           // abdomen band
+    ctx.fillRect(13, -9, 6, 18);            // tail band
+    ctx.restore();
+  }
   else paint(BODY);
 
   // tergite (segment) lines with a light rim so segments read as overlapping plates

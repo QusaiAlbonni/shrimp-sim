@@ -1,13 +1,13 @@
 // Canvas renderer. Logical size is 960x540; scaled to the element with DPR.
-import { TANK, DECOR, PLANTS, FOODS, SNAILS } from '../sim/world.js';
-import { floorY, zOf } from '../sim/ecology.js';
+import { TANK, DECOR, PLANTS, FOODS, SNAILS, TANK_MODELS, BACKGROUNDS } from '../sim/world.js';
+import { floorY, zOf, algaeCellCenter, ALGAE_COLS, ALGAE_ROWS } from '../sim/ecology.js';
 import { drawShrimp, drawShrimpShadow } from './shrimpSprite.js';
 import { drawPlant } from './plants.js';
 
 export class Renderer {
   constructor(canvas, loader) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.loader = loader;
-    this.bubbles = []; this.scale = 1; this.dpr = 1; this.substrate = null;
+    this.bubbles = []; this.particles = []; this.scale = 1; this.dpr = 1; this.substrate = null; this.blob = null;
     this.resize();
   }
 
@@ -68,11 +68,12 @@ export class Renderer {
     const roomLight = 0.5 + 0.5 * Math.sin(((world.hour - 6) / 24) * Math.PI * 2);
 
     // water
+    const bg = BACKGROUNDS[world.tank?.background] || BACKGROUNDS.jungle;
     const grad = ctx.createLinearGradient(0, 0, 0, TANK.h);
-    grad.addColorStop(0, L.on ? '#1a6f86' : '#0d3b4c');
-    grad.addColorStop(1, L.on ? '#0a3a4a' : '#051c26');
+    grad.addColorStop(0, L.on ? bg.top : bg.nightTop);
+    grad.addColorStop(1, L.on ? bg.bottom : bg.nightBottom);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, TANK.w, TANK.h);
-    const backdrop = this.sprite('backdrop');
+    const backdrop = bg.sprite ? this.sprite(bg.sprite) : null;
     if (backdrop) { ctx.globalAlpha = 0.9; ctx.drawImage(backdrop, 0, TANK.floorBack - 306, TANK.w, 320); ctx.globalAlpha = 1; }
 
     // light beams
@@ -96,7 +97,7 @@ export class Renderer {
     for (const p of world.plants) items.push({ y: p.type === 'floating' ? 9999 : p.y - 1, draw: () => drawPlant(ctx, p, PLANTS[p.type], t) });
     const depthAlpha = (z) => 1 - 0.32 * (z ?? 0.5);
     for (const f of world.food) items.push({ y: floorY(f.z ?? 0.5), draw: () => { ctx.save(); ctx.globalAlpha = depthAlpha(f.z); this.drawFood(ctx, f, t); ctx.restore(); } });
-    for (const m of world.molts) items.push({ y: floorY(m.z ?? 0.5), draw: () => drawShrimp(ctx, { ...m, pheno: { rgb: [230, 230, 240], opacity: 0.4 }, mode: 'walk', arrived: true, moltRecent: 0 }, t, { ghost: true }) });
+    for (const m of world.molts) items.push({ y: floorY(m.z ?? 0.5), draw: () => { ctx.save(); ctx.globalAlpha = 0.3 + 0.7 * m.amount; drawShrimp(ctx, { ...m, pheno: { rgb: [230, 230, 240], opacity: 0.4 }, mode: 'walk', arrived: true, moltRecent: 0 }, t, { ghost: true }); ctx.restore(); } });
     for (const s of world.snails) items.push({ y: floorY(s.z ?? 0.5) + (s.onGlass ? -200 : 0), draw: () => this.drawSnail(ctx, s) });
     // Shrimp sort by their ground line, so a shrimp behind the driftwood draws
     // before it (and gets an x-ray ghost) while one in front draws over it.
@@ -125,8 +126,8 @@ export class Renderer {
       }
     }
 
-    // bubbles from filter
-    this.updateBubbles(world, t);
+    // bubbles from filter (frozen while paused)
+    if (!state.paused) this.updateBubbles(world, t);
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     for (const b of this.bubbles) { ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke(); }
 
@@ -142,14 +143,36 @@ export class Renderer {
       if (h) this.label(ctx, h.x, h.y - 30 * h.size - 12, state.nameOf(h));
     }
 
-    // algae film on glass + diatoms
-    const film = world.algae.film, dia = world.algae.diatom;
-    if (film > 0.02 || dia > 0.02) {
-      ctx.fillStyle = `rgba(70,140,50,${film * 0.45})`;
-      ctx.fillRect(0, TANK.top, 18, TANK.floorFront - TANK.top); ctx.fillRect(TANK.w - 18, TANK.top, 18, TANK.floorFront - TANK.top);
-      ctx.fillStyle = `rgba(60,130,40,${film * 0.14 + dia * 0.08})`; ctx.fillRect(0, TANK.top, TANK.w, TANK.floorFront - TANK.top);
-      if (dia > 0.02) { ctx.fillStyle = `rgba(120,90,40,${dia * 0.35})`; ctx.fillRect(0, TANK.top, 18, TANK.floorFront - TANK.top); ctx.fillRect(TANK.w - 18, TANK.top, 18, TANK.floorFront - TANK.top); }
+    // hearts over courting pairs
+    for (const h of world._hearts || []) this.drawHeart(ctx, h.x, h.y + Math.sin(t * 3 + h.f) * 3, 1 + Math.sin(t * 6) * 0.08);
+
+    // algae growing on the front pane: one soft blob per cell
+    const cells = world.algae.cells;
+    if (cells) {
+      if (!this.blob) this.makeBlob();
+      const cw = (TANK.x1 - TANK.x0) / ALGAE_COLS, ch = (TANK.floorFront - TANK.top) / ALGAE_ROWS;
+      for (let i = 0; i < cells.length; i++) {
+        const v = cells[i]; if (v < 0.03) continue;
+        const c = algaeCellCenter(i);
+        ctx.globalAlpha = Math.min(0.85, v * 0.9);
+        ctx.drawImage(this.blob, c.x - cw * 0.9, c.y - ch * 0.9, cw * 1.8, ch * 1.8);
+      }
+      ctx.globalAlpha = 1;
     }
+    const dia = world.algae.diatom;
+    if (dia > 0.02) { ctx.fillStyle = `rgba(120,90,40,${dia * 0.3})`; ctx.fillRect(0, TANK.top, 18, TANK.floorFront - TANK.top); ctx.fillRect(TANK.w - 18, TANK.top, 18, TANK.floorFront - TANK.top); }
+
+    // snails crawling on the front pane sit in front of everything
+    for (const s of world.snails) if (s.onFront) this.drawSnail(ctx, s);
+
+    // scrub / trim particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      if (!state.paused) { p.x += p.vx; p.y += p.vy; p.vy += 0.03; p.life -= 0.02; }
+      if (p.life <= 0) { this.particles.splice(i, 1); continue; }
+      ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
 
     // water surface
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5;
@@ -169,14 +192,50 @@ export class Renderer {
     const vig = ctx.createRadialGradient(TANK.w / 2, TANK.h / 2, TANK.h * 0.55, TANK.w / 2, TANK.h / 2, TANK.w * 0.75);
     vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.35)');
     ctx.fillStyle = vig; ctx.fillRect(0, 0, TANK.w, TANK.h);
-    // glass frame
-    ctx.strokeStyle = 'rgba(180,220,235,0.35)'; ctx.lineWidth = 3;
-    ctx.strokeRect(1.5, 1.5, TANK.w - 3, TANK.h - 3);
-
-    if (state.feedMode) {
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`Click in the tank to drop ${FOODS[state.feedMode].name.toLowerCase()} (Esc to stop)`, TANK.w / 2, TANK.top + 22);
+    // glass frame / rim by tank model
+    const rim = TANK_MODELS[world.tank?.model]?.rim || 'black';
+    if (rim === 'none') { ctx.strokeStyle = 'rgba(200,235,245,0.45)'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, TANK.w - 2, TANK.h - 2); }
+    else {
+      ctx.fillStyle = rim === 'silver' ? '#9aa4aa' : '#141a1e';
+      ctx.fillRect(0, 0, TANK.w, 8); ctx.fillRect(0, TANK.h - 10, TANK.w, 10); ctx.fillRect(0, 0, 6, TANK.h); ctx.fillRect(TANK.w - 6, 0, 6, TANK.h);
+      ctx.strokeStyle = rim === 'silver' ? 'rgba(255,255,255,0.5)' : 'rgba(180,220,235,0.25)'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(6.5, 8.5, TANK.w - 13, TANK.h - 19);
     }
+
+    const hint = state.tool === 'feed' ? (state.feedMode ? `Click in the tank to drop ${FOODS[state.feedMode].name.toLowerCase()}` : 'Pick a food on the Tank tab')
+      : state.tool === 'scrub' ? 'Drag across the glass to scrub algae' : state.tool === 'trim' ? 'Drag across a plant to cut it' : null;
+    if (hint) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${hint} (Esc to stop)`, TANK.w / 2, TANK.top + 24);
+    }
+    if (state.paused) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 14px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillText('⏸ paused', TANK.w - 18, TANK.top + 24); }
+    if (state.tool === 'scrub' && state.pointer) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(state.pointer.x, state.pointer.y, 46, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  makeBlob() {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const rg = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+    rg.addColorStop(0, 'rgba(96,170,70,0.9)'); rg.addColorStop(0.55, 'rgba(70,140,50,0.55)'); rg.addColorStop(1, 'rgba(60,130,40,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+    // speckle
+    for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(40,110,30,0.35)'; g.beginPath(); g.arc(12 + ((i * 37) % 40), 12 + ((i * 53) % 40), 1 + (i % 3), 0, Math.PI * 2); g.fill(); }
+    this.blob = c;
+  }
+
+  drawHeart(ctx, x, y, k = 1) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    ctx.fillStyle = 'rgba(255,90,120,0.95)'; ctx.strokeStyle = 'rgba(120,20,50,0.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.bezierCurveTo(-10, -2, -8, -12, 0, -6); ctx.bezierCurveTo(8, -12, 10, -2, 0, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(-3, -5, 2, 1.2, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  burst(x, y, color, n = 8, spread = 2) {
+    for (let i = 0; i < n; i++) this.particles.push({ x, y, vx: (Math.random() - 0.5) * spread, vy: (Math.random() - 0.7) * spread, r: 1 + Math.random() * 2, life: 0.8 + Math.random() * 0.4, color });
   }
 
   label(ctx, x, y, text) {
@@ -207,10 +266,11 @@ export class Renderer {
 
   drawSnail(ctx, s) {
     const tp = SNAILS[s.type]; const img = this.sprite(tp.sprite);
-    const k = s.onGlass ? 1 : 1 - 0.2 * (s.z ?? 0.5);
+    const k = s.onGlass || s.onFront ? 1.05 : 1 - 0.2 * (s.z ?? 0.5);
     const w = tp.w * s.size * k, h = tp.h * s.size * k;
     ctx.save(); ctx.translate(s.x, s.y);
-    if (!s.onGlass) ctx.globalAlpha = 1 - 0.3 * (s.z ?? 0.5);
+    if (s.onFront) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(2, 2, w * 0.5, h * 0.35, 0, 0, Math.PI * 2); ctx.fill(); }
+    else if (!s.onGlass) ctx.globalAlpha = 1 - 0.3 * (s.z ?? 0.5);
     if (s.onGlass) ctx.rotate(s.x < TANK.w / 2 ? Math.PI / 2 : -Math.PI / 2);
     if (s.facing > 0) ctx.scale(-1, 1);
     if (img) ctx.drawImage(img, -w / 2, -h, w, h);
@@ -221,6 +281,7 @@ export class Renderer {
   updateBubbles(world, t) {
     const f = world.decor.find((d) => d.type === 'filter');
     if (f && Math.random() < 0.25) this.bubbles.push({ x: f.x + (Math.random() - 0.5) * 6, y: f.y - 128, r: 1 + Math.random() * 2.5, vy: 0.8 + Math.random() * 1.2, ph: Math.random() * 6 });
+    for (const d of world.decor) if (DECOR[d.type].bubbles && Math.random() < 0.05) this.bubbles.push({ x: d.x + (Math.random() - 0.5) * 20, y: d.y - DECOR[d.type].h * 0.7, r: 1.5 + Math.random() * 3, vy: 0.6 + Math.random(), ph: Math.random() * 6 });
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
       const b = this.bubbles[i]; b.y -= b.vy; b.x += Math.sin(t * 3 + b.ph) * 0.3;
       if (b.y < TANK.top + 2) this.bubbles.splice(i, 1);
